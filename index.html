@@ -87,6 +87,11 @@
           </div>
         </div>
       </div>
+      <section class="card" id="season-card" aria-labelledby="season-title">
+        <h2 id="season-title">When the methane is emitted</h2>
+        <p class="sub">Thailand, Gg CH₄ per month (reference period). Select a bar to show that month.</p>
+        <div id="season-chart"></div>
+      </section>
     </div>
     <div class="provgrid">
       <div class="mapcol">
@@ -97,22 +102,29 @@
           <input type="range" id="grid-slider" min="1" max="12" step="1" value="1" aria-label="Month">
           <div class="ticks" id="grid-ticks"></div>
         </div>
+        <div class="under-map">
+          <div class="card legend" id="grid-legend">
+            <h2>Estimated methane allocation</h2>
+            <p class="sub">t CH₄ per 0.1° cell per month</p>
+            <p class="sub">Seasonal timing applied by province.</p>
+          </div>
+          <div class="card">
+            <h2>Cell detail</h2>
+            <p class="sub" id="grid-info">Hover or tap a cell to read its value.</p>
+            <p class="sub" id="grid-selected" hidden></p>
+          </div>
+        </div>
       </div>
       <aside class="side" aria-label="Seasonal estimates">
-        <div class="card" id="season-card">
-          <h2>When the methane is emitted</h2>
-          <p class="sub">Thailand, Gg CH₄ per month (reference period). Select a bar to show that month on the map.</p>
-          <div id="season-chart"></div>
+        <div class="card sel" id="gprov-card">
+          <h2 id="gprov-title">One province by month</h2>
+          <p class="sub" id="gprov-sub"></p>
+          <div id="gprov-chart"></div>
         </div>
-        <div class="card">
-          <h2>Cell detail</h2>
-          <p class="sub" id="grid-info">Hover or tap a cell to read its value.</p>
-          <p class="sub" id="grid-selected" hidden></p>
-        </div>
-        <div class="card legend" id="grid-legend">
-          <h2>Estimated methane allocation</h2>
-          <p class="sub">t CH₄ per 0.1° cell per month</p>
-          <p class="sub">Seasonal timing applied by province.</p>
+        <div class="card" id="peak-card">
+          <h2>Peak month by province</h2>
+          <p class="sub">Month with the most estimated methane (MODIS planting dates, May 2022 – May 2023). Select a province to see its months.</p>
+          <div id="peak-map"></div>
         </div>
       </aside>
     </div>

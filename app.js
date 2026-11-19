@@ -101,6 +101,7 @@
     function select(i) {
       sel = i; const [x, y] = G.cells[i];
       hl.setBounds([[y, x], [y + G.cellsize, x + G.cellsize]]).addTo(map); hl.bringToFront(); info(i);
+      if (cellProv[i]) { gsel = cellProv[i].p; provSeason(); peakMap(); }   // s219: the cell's province (largest share)
       if (APP.writeHash) APP.writeHash();
     }
     const gridLegend = document.getElementById('grid-legend');
@@ -109,25 +110,77 @@
     document.getElementById('grid-ref').textContent = G.period;
     const NAT = d3.range(12).map((k) => d3.sum(G.months, (r) => r[k]) / 1000);
     // s218: Thailand by month, the current month highlighted; a bar click shows that month
-    function seasonChart() {
-      const card = document.getElementById('season-chart'); if (!card) return;
+    function bars(card, vals, h, label, digits) {
       card.replaceChildren();
-      const w = Math.max(240, card.clientWidth || 300), h = 150, mg = { t: 14, r: 6, b: 18, l: 34 };
+      const w = Math.max(240, card.clientWidth || 300), mg = { t: 14, r: 6, b: 18, l: 34 };
       const x = d3.scaleBand().domain(d3.range(1, 13)).range([mg.l, w - mg.r]).padding(0.18);
-      const yy = d3.scaleLinear().domain([0, d3.max(NAT) * 1.08]).nice().range([h - mg.b, mg.t]);
+      const yy = d3.scaleLinear().domain([0, d3.max(vals) * 1.08 || 1]).nice().range([h - mg.b, mg.t]);
       const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
-        .attr('aria-label', 'Thailand estimated rice methane by month; highest in ' + MONTHS[NAT.indexOf(d3.max(NAT))]);
-      svg.append('g').attr('transform', `translate(${mg.l},0)`).call(d3.axisLeft(yy).ticks(4).tickSize(-(w - mg.l - mg.r))).call((g) => g.select('.domain').remove());
+        .attr('aria-label', label + ' by month; highest in ' + MONTHS[vals.indexOf(d3.max(vals))]);
+      svg.append('g').attr('transform', `translate(${mg.l},0)`).call(d3.axisLeft(yy).ticks(h < 110 ? 2 : 4).tickSize(-(w - mg.l - mg.r))).call((g) => g.select('.domain').remove());
       svg.append('g').attr('transform', `translate(0,${h - mg.b})`).call(d3.axisBottom(x).tickSize(0).tickFormat((m) => MONTHS[m - 1][0])).call((g) => g.select('.domain').attr('stroke', '#9a9a9a'));
-      svg.selectAll('rect.bar').data(NAT).join('rect').attr('class', 'bar')
+      svg.selectAll('rect.bar').data(vals).join('rect').attr('class', 'bar')
         .attr('x', (d, k) => x(k + 1)).attr('width', x.bandwidth()).attr('y', (d) => yy(d)).attr('height', (d) => yy(0) - yy(d))
         .attr('fill', (d, k) => (k + 1 === month ? d3.interpolateCividis(0.92) : '#c9c9c9'))
         .attr('stroke', (d, k) => (k + 1 === month ? ink : 'none')).style('cursor', 'pointer')
-        .on('click', (e, d) => { gpl.stop(); setMonth(NAT.indexOf(d) + 1); });
-      svg.append('text').attr('x', x(month) + x.bandwidth() / 2).attr('y', yy(NAT[month - 1]) - 3).attr('text-anchor', 'middle')
-        .attr('font-weight', 700).text(fmt(NAT[month - 1], 0));
+        .on('click', (e, d) => { gpl.stop(); setMonth(vals.indexOf(d) + 1); });
+      svg.append('text').attr('x', x(month) + x.bandwidth() / 2).attr('y', yy(vals[month - 1]) - 3).attr('text-anchor', 'middle')
+        .attr('font-weight', 700).text(fmt(vals[month - 1], digits));
     }
-    window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) seasonChart(); });
+    // s219: province monthly series = sum over the province's cells of (cell month / cell year) x the province's allocated t
+    const PM = {}, cellProv = {};
+    Object.entries(G.byprov).forEach(([p, list]) => {
+      const m = new Array(12).fill(0);
+      list.forEach(([i, t]) => {
+        const yr = d3.sum(G.months[i]); if (yr > 0) G.months[i].forEach((v, k) => { m[k] += v / yr * t / 1000; });
+        if (!cellProv[i] || cellProv[i].t < t) cellProv[i] = { p, t };
+      });
+      PM[p] = m;
+    });
+    const peakOf = (p) => { const m = PM[p]; return m && d3.max(m) > 0 ? m.indexOf(d3.max(m)) + 1 : null; };
+    let gsel = null;   // selected province on the monthly view
+    function provSeason() {
+      const box = document.getElementById('gprov-chart'), title = document.getElementById('gprov-title'), sub = document.getElementById('gprov-sub');
+      if (!box) return;
+      if (!gsel) { title.textContent = 'One province by month'; sub.textContent = 'Select a province on the peak-month map, or a cell on the main map.'; box.replaceChildren(); return; }
+      const m = PM[gsel], yr = d3.sum(m), pk = peakOf(gsel);
+      title.textContent = gsel;
+      sub.textContent = `Gg CH₄ per month · peak in ${MONTHS[pk - 1]} · ${fmt(yr, 1)} Gg per year (2022–24 rice area)`;
+      bars(box, m, 120, gsel + ' estimated rice methane', 1);
+    }
+    const PEAKS = [8, 9, 10, 11, 12, 1];   // months that are a provincial peak (Aug-Jan), coloured in season order
+    const peakCol = d3.scaleOrdinal().domain(PEAKS).range(d3.quantize((t) => d3.interpolatePlasma(0.1 + t * 0.75), PEAKS.length));
+    function peakMap() {
+      const box = document.getElementById('peak-map'); if (!box) return;
+      box.replaceChildren();
+      const w = Math.max(240, box.clientWidth || 300), h = Math.max(220, Math.min(box.clientHeight || 300, 440, Math.round(w * 0.9))), mw = Math.min(w * 0.6, h * 0.62);
+      const proj = d3.geoMercator().fitExtent([[4, 4], [mw, h - 4]], P.geo), path = d3.geoPath(proj);
+      const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
+        .attr('aria-label', 'Map of each province coloured by its peak month of estimated rice methane');
+      svg.append('g').selectAll('path').data(P.geo.features).join('path').attr('d', path)
+        .attr('fill', (f) => { const pk = peakOf(f.properties.province); return pk ? (peakCol.domain().includes(pk) ? peakCol(pk) : NODATA) : NODATA; })
+        .attr('stroke', (f) => (f.properties.province === gsel ? ink : '#ffffff')).attr('stroke-width', (f) => (f.properties.province === gsel ? 2 : 0.5))
+        .style('cursor', 'pointer').on('click', (e, f) => { gsel = f.properties.province; provSeason(); peakMap(); })
+        .append('title').text((f) => { const pk = peakOf(f.properties.province); return f.properties.province + (pk ? ': peak in ' + MONTHS[pk - 1] : ': no rice'); });
+      svg.select('g').selectAll('path').filter((f) => f.properties.province === gsel).raise();
+      const counts = d3.rollup(Object.keys(PM), (v) => v.length, peakOf);
+      const lg = svg.append('g').attr('transform', `translate(${mw + 24},${h * 0.2})`);
+      lg.append('text').attr('y', -8).attr('font-weight', 700).text('Peak month');
+      PEAKS.forEach((mo, k) => {
+        const g = lg.append('g').attr('transform', `translate(0,${k * 22})`);
+        g.append('rect').attr('width', 14).attr('height', 14).attr('fill', peakCol(mo));
+        g.append('text').attr('x', 20).attr('y', 11).text(`${MONTHS[mo - 1].slice(0, 3)} (${counts.get(mo) || 0})`);
+      });
+      lg.append('text').attr('y', PEAKS.length * 22 + 10).attr('fill', '#666').text('(number of provinces)');
+    }
+    function seasonChart() {
+      const card = document.getElementById('season-chart'); if (!card) return;
+      bars(card, NAT, 92, 'Thailand estimated rice methane', 0);
+      provSeason();
+    }
+    window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) { seasonChart(); peakMap(); } });
+    APP.peakMap = peakMap;
+    APP.gridProv = { series: PM, peak: peakOf, select: (p) => { gsel = p; provSeason(); peakMap(); }, selected: () => gsel };
     APP.seasonChart = seasonChart;
     function setMonth(m) {
       month = m;
@@ -599,7 +652,7 @@
     gridButton.setAttribute('aria-pressed', String(seasonal));
     provButton.setAttribute('aria-pressed', String(!seasonal));
     ensureFit(seasonal ? APP.grid.map : APP.prov.map);
-    if (!seasonal) APP.prov.refreshCharts(); else APP.seasonChart();
+    if (!seasonal) APP.prov.refreshCharts(); else { APP.seasonChart(); APP.peakMap(); }
     APP.writeHash();
   }
   gridButton.addEventListener('click', () => { if (!gridVisible()) showView(true); });

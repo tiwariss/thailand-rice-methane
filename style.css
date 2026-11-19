@@ -242,3 +242,29 @@ footer .tools[hidden] { display: none; }
 #season-chart svg text { font-size: 11px; fill: var(--ink); }
 #season-chart .tick line { stroke: #e6e6e6; }
 #season-chart rect.bar:hover { opacity: 0.8; }
+
+/* ===== s219: province-by-month chart and peak-month map on the monthly view ===== */
+#gprov-chart svg, #peak-map svg { display: block; }
+#gprov-chart svg text, #peak-map svg text { font-size: 11px; fill: var(--ink); }
+#gprov-chart .tick line { stroke: #e6e6e6; }
+#peak-map svg path:hover { opacity: 0.8; }
+#view-grid .side { gap: 10px; }
+@media (min-width: 901px) {
+  #view-grid .provgrid { align-items: start; }
+  #map-grid { flex: 1 1 auto; width: 100%; height: clamp(360px, calc(100vh - 300px), 640px); min-height: 0; }
+}
+.under-map { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; margin-top: 10px; }
+@media (max-width: 600px) { .under-map { grid-template-columns: minmax(0, 1fr); } }
+/* s219b: monthly view mirrors the annual view: header card | Thailand chart on top, map column | sidebar below, edges aligned */
+#season-card { grid-column: 2; grid-row: 1; align-self: stretch; padding: 5px 8px; }
+#season-card .sub { margin: 0 0 2px; }
+#view-grid .topbar { align-items: stretch; }
+#view-grid .topbar .annual-controls { display: flex; align-items: center; }
+#view-grid .topbar .prov-summary { width: 100%; }
+@media (min-width: 901px) {
+  #view-grid .provgrid { align-items: stretch; }
+  #view-grid .side { grid-template-rows: auto minmax(0, 1fr); }
+  #peak-card { display: flex; flex-direction: column; }
+  #peak-map { flex: 1; display: flex; align-items: center; }
+}
+@media (max-width: 900px) { #season-card { grid-column: 1; grid-row: auto; } }
