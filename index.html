@@ -15,37 +15,45 @@
 
 <main>
   <section id="view-prov" class="view" aria-label="Annual provincial estimates">
-    <div class="period">
-      <div class="period-main" id="prov-period">2024</div>
-      <div class="period-sub">Annual provincial estimate</div>
-      <div class="period-total" id="prov-national" aria-live="polite"></div>
-    </div>
-    <div class="explore-tools">
-      <form id="province-search-form">
-        <label for="province-search">Find a province</label>
-        <div class="search-row"><input id="province-search" list="province-options" placeholder="Type a province name" autocomplete="off"><datalist id="province-options"></datalist><button class="tool" type="submit">Go</button></div>
-        <span id="search-message" role="status"></span>
-      </form>
-      <div><label for="emission-type">Show estimated emissions</label>
-        <select id="emission-type"><option value="total">Total rice methane</option><option value="controlled">Water-controlled rice</option><option value="rainfed">Rainfed rice</option></select>
+    <!-- s215: everything the reader controls sits above the map; the selected province's card leads the sidebar -->
+    <div class="topbar">
+      <div class="period">
+        <div class="period-main" id="prov-period">2024</div>
+        <div class="period-total" id="prov-national" aria-live="polite"></div>
       </div>
-      <button class="tool" id="clear-selection" hidden>Clear selection</button>
-    </div>
-    <p class="sub" id="metric-note">Total includes water-controlled and rainfed rice.</p>
-    <div class="provgrid">
-      <div>
-        <div class="mapwrap"><div id="map-prov" class="map" aria-label="Map of estimated rice methane by province"></div></div>
-        <div class="controls">
-          <button class="play" id="prov-play" aria-pressed="false">▶ Play</button>
-          <input type="range" id="prov-slider" min="1988" max="2024" step="1" value="2024" aria-label="Year">
-          <div class="ticks" id="prov-ticks"></div>
+      <div class="controls">
+        <button class="play" id="prov-play" aria-pressed="false">▶ Play</button>
+        <input type="range" id="prov-slider" min="1988" max="2024" step="1" value="2024" aria-label="Year">
+        <div class="ticks" id="prov-ticks"></div>
+      </div>
+      <div class="explore-tools">
+        <form id="province-search-form">
+          <label for="province-search">Find a province</label>
+          <div class="search-row"><input id="province-search" list="province-options" placeholder="Type a province name" autocomplete="off"><datalist id="province-options"></datalist><button class="tool" type="submit">Go</button></div>
+          <span id="search-message" role="status"></span>
+        </form>
+        <div><label for="emission-type">Show estimated emissions</label>
+          <select id="emission-type"><option value="total">Total rice methane</option><option value="controlled">Water-controlled rice</option><option value="rainfed">Rainfed rice</option></select>
         </div>
-        <div class="info" id="prov-info">Hover or tap a province to read its value.</div>
-        <div class="detailbar"><label><input type="checkbox" id="detail-toggle" checked> Show 10 km detail inside the selected province</label> <button class="tool" id="prov-reset">Show all Thailand</button></div>
-        <p class="sub" id="detail-note"></p>
-        <div class="tools"><button class="tool" id="prov-csv">Download all years (CSV)</button><button class="tool" id="prov-link">Copy link to this view</button><span class="toolmsg" id="prov-msg" aria-live="polite"></span></div>
+        <button class="tool" id="clear-selection" hidden>Clear selection</button>
+        <p class="sub" id="metric-note">Total includes water-controlled and rainfed rice.</p>
       </div>
-      <aside class="side">
+    </div>
+    <div class="provgrid">
+      <div class="mapcol">
+        <div class="maptools">
+          <div class="detailbar"><label><input type="checkbox" id="detail-toggle" checked> 10 km detail in the selected province</label> <button class="tool" id="prov-reset">Show all Thailand</button></div>
+          <div class="tools"><button class="tool" id="prov-csv">Download all years (CSV)</button><button class="tool" id="prov-link">Copy link</button><span class="toolmsg" id="prov-msg" aria-live="polite"></span></div>
+        </div>
+        <div class="mapwrap"><div id="map-prov" class="map" aria-label="Map of estimated rice methane by province"></div></div>
+        <div class="info" id="prov-info">Hover or tap a province to read its value.</div>
+        <p class="sub" id="detail-note"></p>
+      </div>
+      <aside class="side" id="side">
+        <div class="card sel" id="chart-card">
+          <p class="hint" id="chart-hint">Click or tap a province on the map or in the Top 10: the map zooms to its 10 km detail and its trend appears here.</p>
+          <div id="chart" hidden></div>
+        </div>
         <div class="card" id="nat-card">
           <h2>Thailand total, 1988–2024</h2>
           <div id="nat-chart"></div>
@@ -54,10 +62,6 @@
           <h2 id="rank-title">Top 10 provinces</h2>
           <p class="sub" id="rank-total"></p>
           <ol class="rank" id="rank" aria-live="off"></ol>
-        </div>
-        <div class="card" id="chart-card">
-          <p class="hint" id="chart-hint">Click a province on the map or in the list: the map zooms in and shows its 10 km hotspots, and its annual emissions appear here.</p>
-          <div id="chart" hidden></div>
         </div>
         <div class="card preview" id="preview-card">
           <div class="pv-head">

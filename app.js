@@ -14,7 +14,7 @@
   }
   function legendBar(parent, vmax, digits, w) {
     const h = 34, x0 = 6, x1 = w - 12;
-    const svg = d3.select(parent).append('svg').attr('width', w).attr('height', h).attr('role', 'img').attr('aria-label', 'Colour scale, 0 to ' + vmax);
+    const svg = d3.select(parent).append('svg').attr('width', w).attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', 'Colour scale, 0 to ' + vmax);   // viewBox: lets phones shrink it (s215)
     const id = 'g' + Math.random().toString(36).slice(2, 8);
     const gr = svg.append('defs').append('linearGradient').attr('id', id);
     d3.range(0, 1.0001, 0.05).forEach((t) => gr.append('stop').attr('offset', t * 100 + '%').attr('stop-color', d3.interpolateCividis(t)));
@@ -262,8 +262,9 @@
         };
         dLegend.addTo(map);
       }
+      map.getContainer().classList.toggle('detail-on', dCount > 0);   // s215: lets phones hide the province legend while the 10 km legend shows
       const note = document.getElementById('detail-note');
-      if (note) note.textContent = dCount ? `${label(sel)}: ${dVisibleCount} of ${dCount} allocated cells visible inside the displayed boundary. Allocated total: ${fmt(dSum / 1000, 1)} Gg CH4 per year (2022-24 rice area), including boundary cells hidden by clipping. Hover a cell for its allocated value.` : '';
+      if (note) note.textContent = dCount ? `10 km grid for ${label(sel)}: ${fmt(dSum / 1000, 1)} Gg CH₄ per year in total (2022–24 rice area, so it can differ from the yearly province value). Hover or tap a cell for its value.` : '';
     }
     let hl = null;
     function clearSelection() {
@@ -294,7 +295,7 @@
       showDetail();
       if (zoom) map.fitBounds(byName[p].getBounds(), { maxZoom: 9, padding: [40, 40] });
       document.getElementById('prov-info').textContent = tipText(p);
-      chart(); ranking(false);
+      chart(); ranking(false); bringCard();
       if (APP.writeHash) APP.writeHash();
     }
     if (detailBox) detailBox.addEventListener('change', () => { if (sel) { geo.eachLayer((l) => l.setStyle({ fillColor: fillFor(l.feature.properties.province), fillOpacity: opFor(l.feature.properties.province) })); showDetail(); } });
@@ -391,6 +392,15 @@
         if (anim && oldRank && oldRank > k + 1) { li.classList.add('flash'); setTimeout(() => li.classList.remove('flash'), 900); }
       });
       if (!anim) { ol.getBoundingClientRect(); ol.classList.remove('noanim'); }   // jump instantly, keep motion for later changes
+    }
+    // s215: after a selection, make the province card visible: on wide screens the sidebar scrolls to its top;
+    // on narrow screens the page scrolls just enough to show the card under the map (only if it is below the fold)
+    function bringCard() {
+      const side = document.getElementById('side'), card = document.getElementById('chart-card');
+      if (!side || !card) return;
+      if (window.matchMedia('(min-width: 901px)').matches) { side.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      const r = card.getBoundingClientRect();
+      if (r.top > window.innerHeight * 0.75) window.scrollTo({ top: window.scrollY + r.top - window.innerHeight * 0.4, behavior: 'smooth' });
     }
     // s214: Thailand total trend: our estimate (sum of provinces, all years complete) and BTR1's official values (total view only)
     function natChart() {

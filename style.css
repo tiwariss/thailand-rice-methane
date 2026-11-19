@@ -104,3 +104,70 @@ body.modal-open { overflow: hidden; }
 #search-message { font-size:0.85rem; }
 #clear-selection[hidden] { display:none; }
 @media(max-width:600px) { .explore-tools > div, .explore-tools form { width:100%; } .search-row input { flex:1; min-width:0; } }
+
+/* ===== s215 layout: controls above the map; map and sidebar fill the screen; selected province leads the sidebar ===== */
+body { max-width: 1440px; padding: 12px 16px; }
+h1 { font-size: 1.25rem; margin: 2px 0 2px; }
+.lede { font-size: 0.88rem; margin: 0 0 8px; }
+.view { padding-top: 4px; }
+.topbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 2px 28px; align-items: end; margin-bottom: 8px; }
+.topbar .period { margin: 0; gap: 4px 14px; }
+.topbar .period-main { min-width: 4ch; }
+.topbar .controls { margin: 0; }
+.topbar .explore-tools { grid-column: 1 / -1; margin: 8px 0 0; }
+.topbar #metric-note { grid-column: 1 / -1; margin: 4px 0 0; }
+.provgrid { grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 14px; }
+.mapcol { min-width: 0; }
+.map { height: clamp(380px, calc(100vh - 250px), 820px); min-height: 0; }
+.side { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; align-content: start; padding-right: 2px; }
+.card.sel { border-color: var(--ink); }
+.card.sel .hint { margin: 0; }
+#nat-chart svg text { font-size: 11px; fill: var(--ink); }
+#nat-chart .tick line { stroke: #e6e6e6; }
+#nat-chart .domain { stroke: #9a9a9a; }
+#nat-chart .sub { margin: 0 0 4px; }
+.notes { max-width: 90ch; }
+
+/* tablets and phones: one column, map first, then the selected province */
+@media (max-width: 900px) {
+  body { padding: 10px 12px; }
+  .lede { display: none; }
+  .topbar { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .topbar .period { align-items: baseline; }
+  .topbar .period-sub { display: none; }
+  .period-main { font-size: 1.6rem; }
+  .period-total { font-size: 0.86rem; }
+  .period-total b { font-size: 1rem; }
+  .topbar .explore-tools { margin-top: 2px; gap: 8px 12px; }
+  .provgrid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .map { height: clamp(300px, 52vh, 520px); }
+  .side { position: static; max-height: none; overflow: visible; padding-right: 0; }
+  .detailbar, .tools { font-size: 0.82rem; }
+}
+@media (max-width: 600px) {
+  .explore-tools { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .play { min-width: 76px; padding: 6px 10px; }
+  .ticks { font-size: 0.7rem; }
+}
+@media (max-width: 600px) {
+  .leaflet-control .legend, .legend { padding: 5px 7px 4px; font-size: 10px; }
+  .legend .lt { font-size: 11px; }
+  .legend .lu { margin-bottom: 2px; }
+  .legend svg { width: 150px; height: auto; }
+}
+@media (max-width: 600px) { #map-prov.detail-on .leaflet-bottom.leaflet-right .legend { display: none; } }
+
+/* ===== s215b desktop polish ===== */
+body { max-width: 1680px; }
+.leaflet-interactive:focus:not(:focus-visible) { outline: none; }   /* no focus box after a mouse click; keyboard users keep it */
+.topbar { grid-template-columns: auto minmax(320px, 1fr); gap: 4px 32px; align-items: center; }
+.topbar .period { flex-wrap: nowrap; }
+.topbar .explore-tools { align-items: end; margin-top: 6px; }
+.topbar .explore-tools #metric-note { margin: 0 0 8px; align-self: end; }
+.maptools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 14px; margin-bottom: 6px; }
+.maptools .detailbar, .maptools .tools { margin: 0; }
+.map { height: clamp(380px, calc(100vh - 225px), 900px); }
+.info { margin-top: 4px; font-size: 0.86rem; color: var(--muted); }
+#chart .ttl { font-size: 0.98rem; }
+#chart .sub { font-size: 0.82rem; }
+@media (max-width: 900px) { .topbar { grid-template-columns: minmax(0, 1fr); } .topbar .period { flex-wrap: wrap; } }
