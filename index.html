@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thailand Rice Methane Explorer</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hd">
+  <h1>Where and when Thailand’s rice methane is emitted</h1>
+  <p class="lede">Estimated rice methane (CH₄) by province and year, 1988–2024, with a seasonal preview on a 0.1° grid.</p>
+</header>
+
+<main>
+  <section id="view-prov" class="view" aria-label="Annual provincial estimates">
+    <div class="period">
+      <div class="period-main" id="prov-period">2024</div>
+      <div class="period-sub">Annual provincial estimate</div>
+      <div class="period-total" id="prov-national" aria-live="polite"></div>
+    </div>
+    <div class="explore-tools">
+      <form id="province-search-form">
+        <label for="province-search">Find a province</label>
+        <div class="search-row"><input id="province-search" list="province-options" placeholder="Type a province name" autocomplete="off"><datalist id="province-options"></datalist><button class="tool" type="submit">Go</button></div>
+        <span id="search-message" role="status"></span>
+      </form>
+      <div><label for="emission-type">Show estimated emissions</label>
+        <select id="emission-type"><option value="total">Total rice methane</option><option value="controlled">Water-controlled rice</option><option value="rainfed">Rainfed rice</option></select>
+      </div>
+      <button class="tool" id="clear-selection" hidden>Clear selection</button>
+    </div>
+    <p class="sub" id="metric-note">Total includes water-controlled and rainfed rice.</p>
+    <div class="provgrid">
+      <div>
+        <div class="mapwrap"><div id="map-prov" class="map" aria-label="Map of estimated rice methane by province"></div></div>
+        <div class="controls">
+          <button class="play" id="prov-play" aria-pressed="false">▶ Play</button>
+          <input type="range" id="prov-slider" min="1988" max="2024" step="1" value="2024" aria-label="Year">
+          <div class="ticks" id="prov-ticks"></div>
+        </div>
+        <div class="info" id="prov-info">Hover or tap a province to read its value.</div>
+        <div class="detailbar"><label><input type="checkbox" id="detail-toggle" checked> Show 10 km detail inside the selected province</label> <button class="tool" id="prov-reset">Show all Thailand</button></div>
+        <p class="sub" id="detail-note"></p>
+        <div class="tools"><button class="tool" id="prov-csv">Download all years (CSV)</button><button class="tool" id="prov-link">Copy link to this view</button><span class="toolmsg" id="prov-msg" aria-live="polite"></span></div>
+      </div>
+      <aside class="side">
+        <div class="card" id="rank-card">
+          <h2 id="rank-title">Top 10 provinces</h2>
+          <p class="sub" id="rank-total"></p>
+          <ol class="rank" id="rank" aria-live="off"></ol>
+        </div>
+        <div class="card" id="chart-card">
+          <p class="hint" id="chart-hint">Click a province on the map or in the list: the map zooms in and shows its 10 km hotspots, and its annual emissions appear here.</p>
+          <div id="chart" hidden></div>
+        </div>
+        <div class="card preview" id="preview-card">
+          <div class="pv-head">
+            <h2>Seasonal preview</h2>
+            <span class="pv-month" id="pv-month">January</span>
+          </div>
+          <p class="sub" id="pv-ref"></p>
+          <div id="map-preview" class="pv-map" role="img" aria-label="Small map of estimated methane allocation by month"></div>
+          <div class="pv-legend" id="pv-legend"></div>
+          <div class="pv-controls">
+            <button class="tool" id="pv-replay">↻ Replay</button>
+            <button class="tool" id="pv-pause" aria-pressed="false">❚❚ Pause</button>
+            <button class="tool strong" id="pv-expand" aria-haspopup="dialog">⤢ Expand</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>About these estimates</h2>
+    <p>Official rice statistics (Office of Agricultural Economics harvested area) and the national inventory’s parameters (Thailand’s first Biennial Transparency Report: emission factors, irrigated and flood-prone shares) underpin every estimate. Satellite observations inform only where methane is placed within each province (Open-SEA-Rice-10 rice area and Sentinel-2 dry-season water) and when in the year it is emitted (MODIS planting dates, each crop emitting evenly over 120 days).</p>
+    <ul>
+      <li><b>Province map</b>: the same factors and shares are applied to each year’s official rice area, so year-to-year changes reflect rice area only; changes in farming practice cannot appear. Nong Khai includes Bueng Kan in every year. Years without an official record are shown as No data.</li>
+      <li><b>Seasonal grid</b>: one reference period, not a single calendar year. Rice area is the 2022–24 average and planting dates come from May 2022 to May 2023. Values are tonnes of CH₄ in each 0.1° cell in that month. The cells give spatial detail, but the monthly timing is applied by province, so neighbouring cells in one province rise and fall together. The grid has 4,379 cells: the report’s 3,840 cells with main-season rice (one rounds to 0 t and is not drawn) plus 540 cells with dry-season rice only (0.7 Gg in total).</li>
+      <li>Each map keeps one colour scale for all frames, so a change in colour is a change in estimated emissions. The scale is square-root; values above the top of the scale take the top colour.</li>
+    </ul>
+  </section>
+</main>
+
+<div class="overlay" id="view-grid" role="dialog" aria-modal="true" aria-labelledby="grid-title" hidden>
+  <div class="ov-inner">
+    <div class="ov-head">
+      <h2 id="grid-title">Seasonal grid · estimated methane allocation</h2>
+      <button class="tool strong" id="grid-close">✕ Close</button>
+    </div>
+    <div class="period">
+      <div class="period-main" id="grid-period">January</div>
+      <div class="period-sub" id="grid-ref"></div>
+    </div>
+    <div class="mapwrap"><div id="map-grid" class="map" aria-label="Map of estimated methane allocation on 0.1 degree cells"></div></div>
+    <div class="controls">
+      <button class="play" id="grid-play" aria-pressed="false">▶ Play</button>
+      <input type="range" id="grid-slider" min="1" max="12" step="1" value="1" aria-label="Month">
+      <div class="ticks" id="grid-ticks"></div>
+    </div>
+    <div class="info" id="grid-info">Hover or tap a cell to read its value.</div>
+    <div class="season">
+      <h2>Thailand, estimated rice CH₄ by month</h2>
+      <p class="sub">Sum of all cells, Gg CH₄ per month · same reference period as the map</p>
+      <div id="season-chart"></div>
+    </div>
+    <div class="tools"><button class="tool" id="grid-csv">Download this month (CSV)</button><button class="tool" id="grid-link">Copy link to this view</button><span class="toolmsg" id="grid-msg" aria-live="polite"></span></div>
+  </div>
+</div>
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/leaflet.js"></script>
+<script src="data/basemap.js"></script>
+<script src="data/grid.js"></script>
+<script src="data/provinces.js"></script>
+<script src="data/clipped_cells.js"></script>
+<script src="data/national_cells.js"></script>
+<script src="data/official.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
