@@ -89,21 +89,28 @@
       return r.outside ? r : r.addTo(map);
     });
     L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#ffffff', weight: 0.4, fill: false, opacity: 0.35 } }).addTo(map);   // s218: fainter province lines
-    const hl = L.rectangle([[0, 0], [0, 0]], { pane: 'hl', color: ink, weight: 2.5, fill: false, interactive: false });
+    // s220: a click selects the whole province (outline on the map + its monthly chart); hover still reads one cell
+    let hl = null;
     const selectedInfo = document.getElementById('grid-selected');
     function info(i) {
       document.getElementById('grid-info').textContent = i === null
-        ? 'Hover to preview a cell or select it to keep its value here.'
+        ? 'Hover to read a cell. Click to select its province.'
         : tipText(i);
-      selectedInfo.hidden = sel === null;
-      if (sel !== null) selectedInfo.textContent = 'Selected: ' + tipText(sel);
+      selectedInfo.hidden = !gsel;
+      if (gsel) selectedInfo.textContent = `Selected: ${gsel} · ${MONTHS[month - 1]} (reference period) · ${fmt(PM[gsel][month - 1], 2)} Gg CH₄`;
     }
-    function select(i) {
-      sel = i; const [x, y] = G.cells[i];
-      hl.setBounds([[y, x], [y + G.cellsize, x + G.cellsize]]).addTo(map); hl.bringToFront(); info(i);
-      if (cellProv[i]) { gsel = cellProv[i].p; provSeason(); peakMap(); }   // s219: the cell's province (largest share)
+    function selectProv(p) {
+      if (!PM[p]) return;
+      gsel = p;
+      if (hl) map.removeLayer(hl);
+      const f = P.geo.features.find((ft) => ft.properties.province === p);
+      hl = L.layerGroup([   // white halo under a dark line so the outline shows on dark and bright cells
+        L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: '#ffffff', weight: 5, fill: false, opacity: 0.95 } }),
+        L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: ink, weight: 2.2, fill: false } })]).addTo(map);
+      provSeason(); peakMap(); info(hover);
       if (APP.writeHash) APP.writeHash();
     }
+    function select(i) { if (cellProv[i]) selectProv(cellProv[i].p); }   // a cell selects its province (largest share of the cell)
     const gridLegend = document.getElementById('grid-legend');
     legendBar(gridLegend, G.vmax, 1, 190);
     noDataSwatch(gridLegend);
@@ -160,7 +167,7 @@
       svg.append('g').selectAll('path').data(P.geo.features).join('path').attr('d', path)
         .attr('fill', (f) => { const pk = peakOf(f.properties.province); return pk ? (peakCol.domain().includes(pk) ? peakCol(pk) : NODATA) : NODATA; })
         .attr('stroke', (f) => (f.properties.province === gsel ? ink : '#ffffff')).attr('stroke-width', (f) => (f.properties.province === gsel ? 2 : 0.5))
-        .style('cursor', 'pointer').on('click', (e, f) => { gsel = f.properties.province; provSeason(); peakMap(); })
+        .style('cursor', 'pointer').on('click', (e, f) => selectProv(f.properties.province))
         .append('title').text((f) => { const pk = peakOf(f.properties.province); return f.properties.province + (pk ? ': peak in ' + MONTHS[pk - 1] : ': no rice'); });
       svg.select('g').selectAll('path').filter((f) => f.properties.province === gsel).raise();
       const counts = d3.rollup(Object.keys(PM), (v) => v.length, peakOf);
@@ -180,7 +187,7 @@
     }
     window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) { seasonChart(); peakMap(); } });
     APP.peakMap = peakMap;
-    APP.gridProv = { series: PM, peak: peakOf, select: (p) => { gsel = p; provSeason(); peakMap(); }, selected: () => gsel };
+    APP.gridProv = { series: PM, peak: peakOf, select: selectProv, selected: () => gsel };
     APP.seasonChart = seasonChart;
     function setMonth(m) {
       month = m;
@@ -206,7 +213,7 @@
     document.getElementById('grid-link').addEventListener('click', () => copyLink('grid-msg'));
     APP.grid = { nat: NAT, map, setMonth, select, month: () => month, fill: (i) => layers[i].options.fillColor,
       colour: col, value: (i, m) => G.months[i][m - 1], layer: (i) => layers[i], tipText,
-      stop: gpl.stop, start: gpl.start, playing: gpl.playing, selected: () => sel };
+      stop: gpl.stop, start: gpl.start, playing: gpl.playing, selected: () => gsel, selectProv };
     setMonth(10);
   })();
 
@@ -660,7 +667,7 @@
 
   APP.writeHash = function () {
     if (!APP.grid || !APP.prov || APP._reading) return;
-    const h = gridVisible() ? `#grid/${APP.grid.month()}${APP.grid.selected() !== null ? '/' + APP.grid.selected() : ''}`
+    const h = gridVisible() ? `#grid/${APP.grid.month()}${APP.grid.selected() ? '/' + encodeURIComponent(APP.grid.selected()) : ''}`
       : `#prov/${APP.prov.year()}/${APP.prov.selected() ? encodeURIComponent(APP.prov.selected()) : ''}/${APP.prov.metric()}`;
     try { history.replaceState(null, '', h); } catch (e) { /* some browsers block this on file:// */ }
   };
@@ -675,7 +682,7 @@
       } else if (parts[0] === 'grid') {
         showView(true);
         const m = +parts[1]; if (m >= 1 && m <= 12) APP.grid.setMonth(m);
-        const i = +parts[2]; if (parts[2] !== undefined && i >= 0 && i < G.cells.length) APP.grid.select(i);
+        if (parts[2]) { const i = +parts[2]; if (Number.isInteger(i) && i >= 0 && i < G.cells.length) APP.grid.select(i); else APP.grid.selectProv(parts[2]); }   // old links used a cell number
       }
     } finally { APP._reading = false; }
   })();
