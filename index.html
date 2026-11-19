@@ -46,6 +46,10 @@
         <div class="tools"><button class="tool" id="prov-csv">Download all years (CSV)</button><button class="tool" id="prov-link">Copy link to this view</button><span class="toolmsg" id="prov-msg" aria-live="polite"></span></div>
       </div>
       <aside class="side">
+        <div class="card" id="nat-card">
+          <h2>Thailand total, 1988–2024</h2>
+          <div id="nat-chart"></div>
+        </div>
         <div class="card" id="rank-card">
           <h2 id="rank-title">Top 10 provinces</h2>
           <p class="sub" id="rank-total"></p>
@@ -75,10 +79,10 @@
 
   <section class="notes">
     <h2>About these estimates</h2>
-    <p>Official rice statistics (Office of Agricultural Economics harvested area) and the national inventory’s parameters (Thailand’s first Biennial Transparency Report: emission factors, irrigated and flood-prone shares) underpin every estimate. Satellite observations inform only where methane is placed within each province (Open-SEA-Rice-10 rice area and Sentinel-2 dry-season water) and when in the year it is emitted (MODIS planting dates, each crop emitting evenly over 120 days).</p>
+    <p>Every number starts from official sources: rice area from the Office of Agricultural Economics, and the emission factors and irrigated and flood-prone shares from Thailand’s first Biennial Transparency Report (BTR1). Satellites are used only to place the methane within each province (Open-SEA-Rice-10 rice area, Sentinel-2 dry-season water) and to spread it over the year (MODIS planting dates; each crop emits evenly over 120 days).</p>
     <ul>
-      <li><b>Province map</b>: the same factors and shares are applied to each year’s official rice area, so year-to-year changes reflect rice area only; changes in farming practice cannot appear. Nong Khai includes Bueng Kan in every year. Years without an official record are shown as No data.</li>
-      <li><b>Seasonal grid</b>: one reference period, not a single calendar year. Rice area is the 2022–24 average and planting dates come from May 2022 to May 2023. Values are tonnes of CH₄ in each 0.1° cell in that month. The cells give spatial detail, but the monthly timing is applied by province, so neighbouring cells in one province rise and fall together. The grid has 4,379 cells: the report’s 3,840 cells with main-season rice (one rounds to 0 t and is not drawn) plus 540 cells with dry-season rice only (0.7 Gg in total).</li>
+      <li><b>Province map</b>: the same factors and shares are applied to each year’s official rice area, so year-to-year changes come from rice area only, not from changes in farming practice. For 2000–2022 the national totals stay within 2% of BTR1’s official figures. Nong Khai includes Bueng Kan in every year. Before 1994, Amnat Charoen, Nong Bua Lamphu and Sa Kaeo are shown as part of the provinces they were split from.</li>
+      <li><b>Seasonal grid</b>: one reference period, not a single calendar year. Rice area is the 2022–24 average and planting dates come from May 2022 to May 2023. Values are tonnes of CH₄ in each 0.1° cell in that month. The cells give spatial detail, but the monthly timing is applied by province, so neighbouring cells in one province rise and fall together. The grid has 4,379 cells: 3,840 with main-season rice and 540 with dry-season rice only.</li>
       <li>Each map keeps one colour scale for all frames, so a change in colour is a change in estimated emissions. The scale is square-root; values above the top of the scale take the top colour.</li>
     </ul>
   </section>

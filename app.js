@@ -316,7 +316,8 @@
       if (t.n < t.of) {
         const missing = Object.keys(P.series).filter((p) => { const v = P.series[p][year - Y0]; return v === null || v === undefined; });
         const s = document.createElement('span'); s.className = 'part';
-        s.textContent = ` (complete: ${missing.join(', ')} were created in 1993 and are counted in the provinces they were split from)`; el.append(s);
+        const names = (a) => (a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0]);
+        s.textContent = ` (${names(missing)} are included in ${names(missing.map((p) => PARENT[p] || p))} until 1993)`; el.append(s);
       }
       // s206/s210: Thailand's official national rice CH4, 2000-2022 (BTR1 Table 2-136, Gg at GWP 28), from data/official.js
       const OFFICIAL = window.DATA_OFFICIAL || {};
@@ -326,7 +327,7 @@
       year = y;
       document.getElementById('prov-slider').value = y;
       document.getElementById('prov-period').textContent = String(y);
-      national();
+      national(); natChart();
       geo.eachLayer((l) => { l.setStyle({ color: strokeFor(l.feature.properties.province), fillColor: fillFor(l.feature.properties.province), fillOpacity: opFor(l.feature.properties.province) }); if (l.isTooltipOpen()) l.setTooltipContent(tipText(l.feature.properties.province)); });
       if (hl) hl.bringToFront();
       if (sel) { document.getElementById('prov-info').textContent = tipText(sel); chart(); }
@@ -390,6 +391,33 @@
         if (anim && oldRank && oldRank > k + 1) { li.classList.add('flash'); setTimeout(() => li.classList.remove('flash'), 900); }
       });
       if (!anim) { ol.getBoundingClientRect(); ol.classList.remove('noanim'); }   // jump instantly, keep motion for later changes
+    }
+    // s214: Thailand total trend: our estimate (sum of provinces, all years complete) and BTR1's official values (total view only)
+    function natChart() {
+      const card = document.getElementById('nat-chart'); if (!card) return;
+      card.replaceChildren();
+      const OFF = window.DATA_OFFICIAL || {};
+      const s = P.years.map((y, i) => ({ y, v: d3.sum(Object.values(P.series), (ser) => (ser[i] === null || ser[i] === undefined ? 0 : ser[i])) }));
+      const off = metric === 'total' ? Object.keys(OFF).map((y) => ({ y: +y, v: OFF[y] })) : [];
+      const cur = s.find((d) => d.y === year);
+      const sub = document.createElement('p'); sub.className = 'sub'; sub.id = 'nat-sub';
+      sub.textContent = `${metricLabels[metric]}, Gg CH₄ per year · ${year}: ${fmt(cur.v, 1)} Gg` + (off.length && OFF[year] ? ` (official ${fmt(OFF[year], 1)})` : '');
+      card.append(sub);
+      const w = Math.max(260, card.clientWidth), h = 170, m = { t: 8, r: 10, b: 24, l: 44 };
+      const x = d3.scaleLinear().domain([Y0, last]).range([m.l, w - m.r]);
+      const yy = d3.scaleLinear().domain([0, d3.max(s.concat(off), (d) => d.v) * 1.1]).nice().range([h - m.b, m.t]);
+      const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
+        .attr('aria-label', `Thailand ${metricLabels[metric].toLowerCase()} by year, 1988 to 2024`);
+      svg.append('g').attr('transform', `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(Math.min(8, Math.floor(w / 60))).tickFormat(d3.format('d')));
+      svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(yy).ticks(5).tickSize(-(w - m.l - m.r))).call((g) => g.select('.domain').remove());
+      svg.append('line').attr('x1', x(year)).attr('x2', x(year)).attr('y1', m.t).attr('y2', h - m.b).attr('stroke', '#9a9a9a').attr('stroke-dasharray', '3 3');
+      svg.append('path').datum(s).attr('fill', 'none').attr('stroke', ink).attr('stroke-width', 1.6).attr('d', d3.line().x((d) => x(d.y)).y((d) => yy(d.v)));
+      svg.selectAll('circle.off').data(off).join('circle').attr('class', 'off').attr('cx', (d) => x(d.y)).attr('cy', (d) => yy(d.v)).attr('r', 2.6)
+        .attr('fill', '#ffffff').attr('stroke', d3.interpolateCividis(0.25)).attr('stroke-width', 1.2);
+      svg.append('circle').attr('id', 'nat-dot').attr('cx', x(year)).attr('cy', yy(cur.v)).attr('r', 4.5).attr('fill', d3.interpolateCividis(0.92)).attr('stroke', ink).attr('stroke-width', 1.2);
+      const key = document.createElement('p'); key.className = 'sub';
+      key.textContent = off.length ? 'Line: our estimate (official rice area × BTR1 2022 factors). Open circles: BTR1 official, 2000–2022.' : 'Line: our estimate (official rice area × BTR1 2022 factors).';
+      card.append(key);
     }
     function chart() {
       const card = document.getElementById('chart'); card.hidden = false; document.getElementById('chart-hint').hidden = true;
