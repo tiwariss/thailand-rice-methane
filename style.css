@@ -171,3 +171,10 @@ body { max-width: 1680px; }
 #chart .ttl { font-size: 0.98rem; }
 #chart .sub { font-size: 0.82rem; }
 @media (max-width: 900px) { .topbar { grid-template-columns: minmax(0, 1fr); } .topbar .period { flex-wrap: wrap; } }
+
+/* ===== s216: smaller main map, wider sidebar, trend charts taller, preview higher ===== */
+@media (min-width: 901px) {
+  .provgrid { grid-template-columns: minmax(0, 1.2fr) minmax(360px, 1fr); }
+  .map { height: clamp(360px, calc(100vh - 300px), 640px); }
+  .pv-map { height: 260px; }
+}

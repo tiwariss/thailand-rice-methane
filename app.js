@@ -413,7 +413,7 @@
       const sub = document.createElement('p'); sub.className = 'sub'; sub.id = 'nat-sub';
       sub.textContent = `${metricLabels[metric]}, Gg CH₄ per year · ${year}: ${fmt(cur.v, 1)} Gg` + (off.length && OFF[year] ? ` (official ${fmt(OFF[year], 1)})` : '');
       card.append(sub);
-      const w = Math.max(260, card.clientWidth), h = 170, m = { t: 8, r: 10, b: 24, l: 44 };
+      const w = Math.max(260, card.clientWidth), h = 220, m = { t: 8, r: 10, b: 24, l: 44 };
       const x = d3.scaleLinear().domain([Y0, last]).range([m.l, w - m.r]);
       const yy = d3.scaleLinear().domain([0, d3.max(s.concat(off), (d) => d.v) * 1.1]).nice().range([h - m.b, m.t]);
       const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
