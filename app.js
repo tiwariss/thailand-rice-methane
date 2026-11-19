@@ -200,16 +200,23 @@
     const metricLabels = { total: 'Total rice methane', controlled: 'Water-controlled rice methane', rainfed: 'Rainfed rice methane' };
     const val = (p, y) => { const s = P.series[p]; if (!s) return null; const v = s[y - Y0]; return v === undefined ? null : v; };
     const label = (p) => (p === 'Nong Khai' ? 'Nong Khai (incl. Bueng Kan)' : p);
-    const tipText = (p) => `${label(p)} / ${metricLabels[metric]} · ${year} · ${val(p, year) === null ? 'No data' : fmt(val(p, year), 2) + ' Gg CH₄ per year'}`;
+    // s212: provinces created in 1993 are drawn as part of the province they were split from until then (their rice is in its value)
+    const PARENT = { 'Amnat Charoen': 'Ubon Ratchathani', 'Nong Bua Lamphu': 'Udon Thani', 'Sa Kaeo': 'Prachin Buri' };
+    const merged = (p) => !!PARENT[p] && val(p, year) === null && val(PARENT[p], year) !== null;
+    const tipText = (p) => (merged(p)
+      ? `${label(p)} / ${metricLabels[metric]} · ${year} · part of ${label(PARENT[p])} until 1993; included in ${label(PARENT[p])}: ${fmt(val(PARENT[p], year), 2)} Gg CH₄ per year`
+      : `${label(p)} / ${metricLabels[metric]} · ${year} · ${val(p, year) === null ? 'No data' : fmt(val(p, year), 2) + ' Gg CH₄ per year'}`);
     const byName = {};
     // 10 km detail inside the selected province (one reference period: 2022-24 rice area); light fill underneath so cells stand out
     const detailBox = document.getElementById('detail-toggle');
     const detailOn = () => metric === 'total' && (!detailBox || detailBox.checked);
     // s201: the selected province's background is the 10 km scale's 0 colour, so cells with no rice read as 0, not as blank gaps
-    const fillFor = (p) => (detailOn() && p === sel && G.byprov[p] ? dcol(0) : col(val(p, year)));
+    const fillFor = (p) => (detailOn() && p === sel && G.byprov[p] ? dcol(0) : merged(p) ? col(val(PARENT[p], year)) : col(val(p, year)));
+    const hasMergedChild = (p) => Object.keys(PARENT).some((c) => PARENT[c] === p && merged(c));
+    const strokeFor = (p) => (merged(p) ? col(val(PARENT[p], year)) : hasMergedChild(p) ? col(val(p, year)) : '#ffffff');   // hide the line inside a merged pair; neighbours keep their white outlines
     const opFor = (p) => (detailOn() && sel && G.byprov[sel] && p !== sel ? 0.35 : 1);   // fade the neighbours while the detail is shown
     const geo = L.geoJSON(P.geo, {
-      style: (f) => ({ color: '#ffffff', weight: 0.6, fillOpacity: opFor(f.properties.province), fillColor: fillFor(f.properties.province) }),
+      style: (f) => ({ color: strokeFor(f.properties.province), weight: 0.6, fillOpacity: opFor(f.properties.province), fillColor: fillFor(f.properties.province) }),
       onEachFeature: (f, lyr) => {
         const p = f.properties.province; byName[p] = lyr;
         lyr.bindTooltip(() => tipText(p), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
@@ -320,7 +327,7 @@
       document.getElementById('prov-slider').value = y;
       document.getElementById('prov-period').textContent = String(y);
       national();
-      geo.eachLayer((l) => { l.setStyle({ fillColor: fillFor(l.feature.properties.province), fillOpacity: opFor(l.feature.properties.province) }); if (l.isTooltipOpen()) l.setTooltipContent(tipText(l.feature.properties.province)); });
+      geo.eachLayer((l) => { l.setStyle({ color: strokeFor(l.feature.properties.province), fillColor: fillFor(l.feature.properties.province), fillOpacity: opFor(l.feature.properties.province) }); if (l.isTooltipOpen()) l.setTooltipContent(tipText(l.feature.properties.province)); });
       if (hl) hl.bringToFront();
       if (sel) { document.getElementById('prov-info').textContent = tipText(sel); chart(); }
       ranking(animate !== false);
