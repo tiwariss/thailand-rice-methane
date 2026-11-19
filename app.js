@@ -99,15 +99,37 @@
       selectedInfo.hidden = !gsel;
       if (gsel) selectedInfo.textContent = `Selected: ${gsel} · ${MONTHS[month - 1]} (reference period) · ${fmt(PM[gsel][month - 1], 2)} Gg CH₄`;
     }
+    // s221: same behaviour as the annual map: select zooms to the province and fades the rest; selecting it again,
+    // the Clear button or Escape clears and zooms back out one step
+    const gridClear = document.getElementById('grid-clear');
+    function fade() { layers.forEach((r, i) => r.setStyle({ fillOpacity: !gsel || (cellProv[i] && cellProv[i].p === gsel) ? 1 : 0.35 })); }
+    function flyTo(bounds, options) {
+      map.stop(); map.invalidateSize({ animate: false });
+      if (reduceMotion || APP._reading) map.fitBounds(bounds, { ...options, animate: false });
+      else map.flyToBounds(bounds, { ...options, duration: 0.32 });
+    }
+    function clearProv() {
+      if (!gsel) return;
+      const bounds = hl ? hl.getLayers()[0].getBounds() : null, maxZoom = Math.max(map.getMinZoom(), map.getZoom() - 1);
+      gsel = null;
+      if (hl) { map.removeLayer(hl); hl = null; }
+      if (gridClear) gridClear.hidden = true;
+      fade(); provSeason(); peakMap(); info(hover);
+      if (bounds) flyTo(bounds, { maxZoom });
+      if (APP.writeHash) APP.writeHash();
+    }
     function selectProv(p) {
       if (!PM[p]) return;
+      if (gsel === p) { clearProv(); return; }
       gsel = p;
+      if (gridClear) gridClear.hidden = false;
       if (hl) map.removeLayer(hl);
       const f = P.geo.features.find((ft) => ft.properties.province === p);
       hl = L.layerGroup([   // white halo under a dark line so the outline shows on dark and bright cells
         L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: '#ffffff', weight: 5, fill: false, opacity: 0.95 } }),
         L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: ink, weight: 2.2, fill: false } })]).addTo(map);
-      provSeason(); peakMap(); info(hover);
+      fade(); provSeason(); peakMap(); info(hover);
+      flyTo(hl.getLayers()[0].getBounds(), { maxZoom: 9, padding: [40, 40] });
       if (APP.writeHash) APP.writeHash();
     }
     function select(i) { if (cellProv[i]) selectProv(cellProv[i].p); }   // a cell selects its province (largest share of the cell)
@@ -213,7 +235,9 @@
     document.getElementById('grid-link').addEventListener('click', () => copyLink('grid-msg'));
     APP.grid = { nat: NAT, map, setMonth, select, month: () => month, fill: (i) => layers[i].options.fillColor,
       colour: col, value: (i, m) => G.months[i][m - 1], layer: (i) => layers[i], tipText,
-      stop: gpl.stop, start: gpl.start, playing: gpl.playing, selected: () => gsel, selectProv };
+      stop: gpl.stop, start: gpl.start, playing: gpl.playing, selected: () => gsel, selectProv, clear: clearProv };
+    if (gridClear) gridClear.addEventListener('click', clearProv);
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && gsel && !document.getElementById('view-grid').hidden) clearProv(); });
     setMonth(10);
   })();
 

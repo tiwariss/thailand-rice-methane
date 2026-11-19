@@ -270,3 +270,4 @@ footer .tools[hidden] { display: none; }
 @media (max-width: 900px) { #season-card { grid-column: 1; grid-row: auto; } }
 .leaflet-container:focus:not(:focus-visible) { outline: none; }   /* s220: no black box round the map after a mouse click */
 #map-grid:focus, #map-prov:focus { outline: none; }
+#grid-clear[hidden] { display: none; } #grid-clear { justify-self: start; grid-column: 1 / -1; width: max-content; }
