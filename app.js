@@ -88,7 +88,7 @@
       r.on('click', () => select(i));
       return r.outside ? r : r.addTo(map);
     });
-    L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#ffffff', weight: 0.5, fill: false, opacity: 0.9 } }).addTo(map);
+    L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#ffffff', weight: 0.4, fill: false, opacity: 0.35 } }).addTo(map);   // s218: fainter province lines
     const hl = L.rectangle([[0, 0], [0, 0]], { pane: 'hl', color: ink, weight: 2.5, fill: false, interactive: false });
     const selectedInfo = document.getElementById('grid-selected');
     function info(i) {
@@ -108,6 +108,27 @@
     noDataSwatch(gridLegend);
     document.getElementById('grid-ref').textContent = G.period;
     const NAT = d3.range(12).map((k) => d3.sum(G.months, (r) => r[k]) / 1000);
+    // s218: Thailand by month, the current month highlighted; a bar click shows that month
+    function seasonChart() {
+      const card = document.getElementById('season-chart'); if (!card) return;
+      card.replaceChildren();
+      const w = Math.max(240, card.clientWidth || 300), h = 150, mg = { t: 14, r: 6, b: 18, l: 34 };
+      const x = d3.scaleBand().domain(d3.range(1, 13)).range([mg.l, w - mg.r]).padding(0.18);
+      const yy = d3.scaleLinear().domain([0, d3.max(NAT) * 1.08]).nice().range([h - mg.b, mg.t]);
+      const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
+        .attr('aria-label', 'Thailand estimated rice methane by month; highest in ' + MONTHS[NAT.indexOf(d3.max(NAT))]);
+      svg.append('g').attr('transform', `translate(${mg.l},0)`).call(d3.axisLeft(yy).ticks(4).tickSize(-(w - mg.l - mg.r))).call((g) => g.select('.domain').remove());
+      svg.append('g').attr('transform', `translate(0,${h - mg.b})`).call(d3.axisBottom(x).tickSize(0).tickFormat((m) => MONTHS[m - 1][0])).call((g) => g.select('.domain').attr('stroke', '#9a9a9a'));
+      svg.selectAll('rect.bar').data(NAT).join('rect').attr('class', 'bar')
+        .attr('x', (d, k) => x(k + 1)).attr('width', x.bandwidth()).attr('y', (d) => yy(d)).attr('height', (d) => yy(0) - yy(d))
+        .attr('fill', (d, k) => (k + 1 === month ? d3.interpolateCividis(0.92) : '#c9c9c9'))
+        .attr('stroke', (d, k) => (k + 1 === month ? ink : 'none')).style('cursor', 'pointer')
+        .on('click', (e, d) => { gpl.stop(); setMonth(NAT.indexOf(d) + 1); });
+      svg.append('text').attr('x', x(month) + x.bandwidth() / 2).attr('y', yy(NAT[month - 1]) - 3).attr('text-anchor', 'middle')
+        .attr('font-weight', 700).text(fmt(NAT[month - 1], 0));
+    }
+    window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) seasonChart(); });
+    APP.seasonChart = seasonChart;
     function setMonth(m) {
       month = m;
       document.getElementById('grid-slider').value = m;
@@ -116,6 +137,7 @@
       layers.forEach((r, i) => r.setStyle({ fillColor: col(G.months[i][m - 1]) }));
       layers.forEach((r) => { if (r.isTooltipOpen()) r.setTooltipContent(tipText(r.cellIndex)); });
       info(hover);
+      seasonChart();
       if (APP.writeHash) APP.writeHash();
     }
     const ticks = document.getElementById('grid-ticks');
@@ -429,18 +451,23 @@
       const sub = document.createElement('p'); sub.className = 'sub'; sub.id = 'nat-sub';
       sub.textContent = `${metricLabels[metric]}, Gg CH₄ per year · ${year}: ${fmt(cur.v, 1)} Gg`;
       card.append(sub);
-      const w = Math.max(260, card.clientWidth), h = 64, m = { t: 6, r: 12, b: 16, l: 36 };
+      // s218: axis zoomed to the data (not from 0) so year-to-year change shows; BTR1 official totals as dots (total view only)
+      const OFF = metric === 'total' && window.DATA_OFFICIAL ? Object.entries(window.DATA_OFFICIAL).map(([y, v]) => ({ y: +y, v })) : [];
+      const w = Math.max(260, card.clientWidth), h = 84, m = { t: 6, r: 12, b: 16, l: 40 };
       const x = d3.scaleLinear().domain([Y0, last]).range([m.l, w - m.r]);
-      const yy = d3.scaleLinear().domain([0, d3.max(s, (d) => d.v) * 1.1]).nice().range([h - m.b, m.t]);
+      const all = s.map((d) => d.v).concat(OFF.map((d) => d.v)), lo = d3.min(all), hi = d3.max(all), pad = (hi - lo) * 0.12;
+      const yy = d3.scaleLinear().domain([lo - pad, hi + pad]).nice().range([h - m.b, m.t]);
       const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
         .attr('aria-label', `Thailand ${metricLabels[metric].toLowerCase()} by year, 1988 to 2024`);
       svg.append('g').attr('transform', `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(Math.min(8, Math.floor(w / 60))).tickFormat(d3.format('d')));
       svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(yy).ticks(3).tickSize(-(w - m.l - m.r))).call((g) => g.select('.domain').remove());
       svg.append('line').attr('x1', x(year)).attr('x2', x(year)).attr('y1', m.t).attr('y2', h - m.b).attr('stroke', '#9a9a9a').attr('stroke-dasharray', '3 3');
       svg.append('path').datum(s).attr('fill', 'none').attr('stroke', ink).attr('stroke-width', 1.6).attr('d', d3.line().x((d) => x(d.y)).y((d) => yy(d.v)));
+      svg.append('g').selectAll('circle').data(OFF).join('circle').attr('class', 'off-dot').attr('cx', (d) => x(d.y)).attr('cy', (d) => yy(d.v)).attr('r', 2.4)
+        .attr('fill', '#ffffff').attr('stroke', '#666666').attr('stroke-width', 1.1).append('title').text((d) => `${d.y} BTR1 official: ${fmt(d.v, 1)} Gg CH₄`);
       svg.append('circle').attr('id', 'nat-dot').attr('cx', x(year)).attr('cy', yy(cur.v)).attr('r', 4.5).attr('fill', d3.interpolateCividis(0.92)).attr('stroke', ink).attr('stroke-width', 1.2);
       const key = document.createElement('p'); key.className = 'sub';
-      key.textContent = 'Line: our estimate (official rice area × BTR1 2022 factors).';
+      key.textContent = 'Line: our estimate (OAE area × BTR1 2022 factors).' + (OFF.length ? ' Dots: BTR1 official, 2000–22.' : '') + ' Axis not from 0.';
       card.append(key);
     }
     function chart() {
@@ -572,7 +599,7 @@
     gridButton.setAttribute('aria-pressed', String(seasonal));
     provButton.setAttribute('aria-pressed', String(!seasonal));
     ensureFit(seasonal ? APP.grid.map : APP.prov.map);
-    if (!seasonal) APP.prov.refreshCharts();
+    if (!seasonal) APP.prov.refreshCharts(); else APP.seasonChart();
     APP.writeHash();
   }
   gridButton.addEventListener('click', () => { if (!gridVisible()) showView(true); });

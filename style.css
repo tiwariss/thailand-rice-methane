@@ -230,3 +230,15 @@ footer .tools[hidden] { display: none; }
 .prov-summary .map-views { flex: 0 1 252px; margin: 0; }
 #monthly-switch-slot { display: flex; justify-content: flex-end; margin-bottom: 6px; }
 #monthly-switch-slot .map-views { width: min(100%, 252px); margin: 0; }
+
+/* ===== s218: monthly view uses the same header card and columns as the annual view; season bar chart ===== */
+#monthly-switch-slot { display: flex; justify-content: space-between; margin-bottom: 0; }
+#monthly-switch-slot .map-views { width: auto; flex: 0 1 252px; }
+#view-grid .period-main { min-width: 0; }
+@media (min-width: 901px) {
+  #view-grid .provgrid { grid-template-columns: minmax(0, 1.2fr) minmax(360px, 1fr); }
+}
+#season-chart svg { display: block; }
+#season-chart svg text { font-size: 11px; fill: var(--ink); }
+#season-chart .tick line { stroke: #e6e6e6; }
+#season-chart rect.bar:hover { opacity: 0.8; }

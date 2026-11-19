@@ -78,7 +78,16 @@
   </section>
 
   <section id="view-grid" class="view" aria-label="Seasonal grid estimates" hidden>
-    <div id="monthly-switch-slot"></div>
+    <div class="topbar">
+      <div class="card annual-controls">
+        <div class="prov-summary" id="monthly-switch-slot">
+          <div class="period">
+            <div class="period-main" id="grid-period">October</div>
+            <div class="period-total" id="grid-total" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="provgrid">
       <div class="mapcol">
         <div class="mapwrap"><div id="map-grid" class="map" aria-label="Map of estimated methane allocation on 0.1 degree cells"></div></div>
@@ -90,9 +99,10 @@
         </div>
       </div>
       <aside class="side" aria-label="Seasonal estimates">
-        <div class="card">
-          <h2 id="grid-period">October</h2>
-          <p class="sub" id="grid-total"></p>
+        <div class="card" id="season-card">
+          <h2>When the methane is emitted</h2>
+          <p class="sub">Thailand, Gg CH₄ per month (reference period). Select a bar to show that month on the map.</p>
+          <div id="season-chart"></div>
         </div>
         <div class="card">
           <h2>Cell detail</h2>
@@ -128,6 +138,7 @@
 <script src="data/basemap.js"></script>
 <script src="data/grid.js"></script>
 <script src="data/provinces.js"></script>
+<script src="data/official.js"></script>
 <script src="data/historical_outlines.js"></script>
 <script src="data/clipped_cells.js"></script>
 <script src="data/national_cells.js"></script>
