@@ -142,6 +142,11 @@
     const YEAR = G.months.map((r) => d3.sum(r)), colY = makeScale(G.vmax_piece);
     let mode = 'month', whole = false;   // s227: whole = slider on step 13 (whole year)
     const cellColour = (i) => (whole ? colY(YEAR[i]) : col(G.months[i][month - 1]));
+    // s247: hover box = province name and its value (cell coordinates stay in the Cell detail card); inside the selected
+    // province the hover box shows that cell's value instead
+    const provTip = (i) => { const p = cellProv[i] ? cellProv[i].p : null; if (!p) return tipText(i);
+      return whole ? `${p} · ${fmt(d3.sum(PM[p]), 1)} Gg CH₄ in the whole year` : `${p} · ${fmt(PM[p][month - 1], 2)} Gg CH₄ in ${MONTHS[month - 1]}`; };
+    const cellTip = (i) => (whole ? `This cell: ${fmt(YEAR[i], 1)} t CH₄ in the whole year` : `This cell: ${fmt(G.months[i][month - 1], 2)} t CH₄ in ${MONTHS[month - 1]}`);
     const tipText = (i) => { const [x, y] = centre(i); return whole
       ? `Cell ${x.toFixed(2)}°E, ${y.toFixed(2)}°N · whole year (2022–24 rice area) · ${fmt(YEAR[i], 1)} t CH₄`
       : `Cell ${x.toFixed(2)}°E, ${y.toFixed(2)}°N · ${MONTHS[month - 1]} (reference period) · ${fmt(G.months[i][month - 1], 2)} t CH₄`; };
@@ -159,7 +164,7 @@
     const layers = G.cells.map(([x, y], i) => {
       const r = cellShape(i, { renderer, stroke: false, fillOpacity: 1, fillColor: col(G.months[i][0]) });
       r.cellIndex = i;
-      r.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
+      r.bindTooltip(() => provTip(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });   // s247: province name in the hover box
       r.on('mouseover', () => { hover = i; info(i); hoverProv(i); });
       r.on('mouseout', () => { hover = null; info(null); hoverProv(null); });
       r.on('click', () => select(i));
@@ -231,7 +236,7 @@
         const shp = L.polygon(toLL(g), { renderer, stroke: false, fillOpacity: 1, fillColor: cellColour(i) });
         shp.cellIndex = i;
         shp.setStyle(cellLine(cellColour(i)));
-        shp.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
+        shp.bindTooltip(() => cellTip(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });   // s247: inside the selected province, the cell
         shp.on('mouseover', () => { hover = i; info(i); });
         shp.on('mouseout', () => { hover = null; info(null); });
         shp.on('click', clearProv);   // like the annual map: a click inside the selected province clears it
@@ -438,7 +443,8 @@
         : `Thailand estimate: ${fmt(NAT[m - 1], 1)} Gg CH₄`;
       recolour();
       if (wasWhole !== whole) drawLegend();
-      layers.forEach((r) => { if (r.isTooltipOpen()) r.setTooltipContent(tipText(r.cellIndex)); });
+      layers.forEach((r) => { if (r.isTooltipOpen()) r.setTooltipContent(provTip(r.cellIndex)); });
+      cut.eachLayer((r) => { if (r.isTooltipOpen()) r.setTooltipContent(cellTip(r.cellIndex)); });
       info(hover);
       whenChart();
       if (APP.writeHash) APP.writeHash();
