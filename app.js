@@ -96,6 +96,8 @@
       r.on('click', () => select(i));
       return r.outside ? r : r.addTo(map);
     });
+    // s236: a thin dark casing under the province lines keeps them visible over bright yellow cells
+    const provCasing = L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#000000', weight: 1.2, fill: false, opacity: 0.18 } }).addTo(map);
     const provLines = L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#ffffff', weight: 0.4, fill: false, opacity: 0.35 } }).addTo(map);   // s218: fainter province lines
     // s229: checkbox above the map: thin lines between the 0.1° cells and stronger province borders (off by default)
     let gridLines = false;
@@ -104,11 +106,15 @@
     // s235 (user): light grey lines. Cell lines are never drawn on the whole-country map; they appear automatically inside the
     // selected province (on its cut cells). The checkbox now only makes the province borders stronger.
     const LINE = '#bdbdbd';
-    const cellLine = () => ({ stroke: true, color: LINE, weight: map.getZoom() >= 8 ? 0.9 : 0.6, opacity: 0.95 });
+    // s236: cell lines follow the cell: dark on bright (yellow) cells, light grey on dark cells; thicker as you zoom in
+    const cellLine = (fill) => { const z = map.getZoom(), bright = fill && d3.lab(fill).l > 62;
+      return { stroke: true, color: bright ? 'rgba(0,0,0,0.55)' : LINE, weight: z >= 10 ? 1.4 : z >= 9 ? 1.1 : z >= 8 ? 0.9 : 0.6, opacity: 0.95 }; };
     function lineStyle() {
       const z = map.getZoom();
-      provLines.setStyle(gridLines ? { color: LINE, weight: z >= 8 ? 1.8 : z >= 7 ? 1.4 : 1.0, opacity: z >= 7 ? 0.95 : 0.85 } : { color: '#ffffff', weight: 0.4, opacity: 0.35 });
-      cut.eachLayer((r) => r.setStyle(cellLine()));
+      const pw = gridLines ? (z >= 8 ? 1.8 : z >= 7 ? 1.4 : 1.0) : 0.4;
+      provLines.setStyle(gridLines ? { color: LINE, weight: pw, opacity: z >= 7 ? 0.95 : 0.85 } : { color: '#ffffff', weight: pw, opacity: 0.35 });
+      provCasing.setStyle({ weight: pw + (gridLines ? 1.6 : 0.9), opacity: gridLines ? 0.35 : 0.18 });
+      cut.eachLayer((r) => r.setStyle(cellLine(r.options.fillColor)));
     }
     map.on('zoomend', lineStyle);
     // s220: a click selects the whole province (outline on the map + its monthly chart); hover still reads one cell
@@ -139,7 +145,7 @@
         if (!g) return;   // no piece = a sliver too small to keep (same rule as the annual 10 km detail)
         const shp = L.polygon(toLL(g), { renderer, stroke: false, fillOpacity: 1, fillColor: cellColour(i) });
         shp.cellIndex = i;
-        shp.setStyle(cellLine());
+        shp.setStyle(cellLine(cellColour(i)));
         shp.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
         shp.on('mouseover', () => { hover = i; info(i); });
         shp.on('mouseout', () => { hover = null; info(null); });
@@ -210,7 +216,7 @@
     map.createPane('peak').style.zIndex = 430;
     function recolour() {
       layers.forEach((r, i) => r.setStyle({ fillColor: cellColour(i) }));
-      cut.eachLayer((r) => r.setStyle({ fillColor: cellColour(r.cellIndex) }));
+      cut.eachLayer((r) => { const c = cellColour(r.cellIndex); r.setStyle({ fillColor: c, ...cellLine(c) }); });
     }
     const peakLayer = L.geoJSON(P.geo, {
       pane: 'peak',
