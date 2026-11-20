@@ -358,3 +358,21 @@ footer .tools[hidden] { display: none; }
 .rank-scroll .rank { margin-top: 0; }   /* box stays exactly 10 rows; the 4 px list margin had cut the last row */
 .legend .ltot { margin: 4px 0 0; font-weight: 700; color: var(--ink); }   /* s230: 10 km grid total inside the legend */
 @media (min-width: 901px) { #side:has(#chart:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); align-content: stretch; } }   /* s230: province card reaches the bottom edge */
+
+/* ===== s231: off-screen measuring of the hidden view (same width as the visible one) ===== */
+main { position: relative; }
+.view.measuring { position: absolute !important; visibility: hidden !important; left: 0; right: 0; top: 0; pointer-events: none; }
+@media (min-width: 901px) {   /* s231: the monthly map stretches with its column exactly like the annual map */
+  #view-grid .mapcol { display: flex; flex-direction: column; }
+  #view-grid .mapcol .mapwrap { flex: 1 0 auto; display: flex; }
+  #map-grid { flex: 1; height: auto; min-height: clamp(360px, calc(100vh - 300px), 640px); }
+}
+
+/* ===== s232: the unselected annual page reserves room for the province charts (user: adjust the unselected page instead of
+   squeezing the selected one). Ranking = 10 rows in both states; province card keeps its full height and shows the hint
+   when empty; the map stretches to fill the column. Lines under both maps are identical single lines. ===== */
+@media (min-width: 901px) {
+  #chart-card:has(#chart:not([hidden])) { min-height: 412px; }   /* s233: unselected = ranking fills the panel (user); selected = 10 rows + this card */
+  #chart-card .hint { padding-top: 8px; }
+}
+.mapcol .info, #grid-ref { font-size: 0.82rem; line-height: 1.35; margin: 4px 0 0; min-height: 1.35em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

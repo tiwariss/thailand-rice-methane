@@ -66,6 +66,7 @@
     let month = 1, sel = null, hover = null;
     const map = baseMap('map-grid');
     const renderer = L.canvas({ padding: 0.3 });
+    new ResizeObserver(() => { if (map.getContainer().clientWidth) map.invalidateSize({ animate: false }); }).observe(map.getContainer());   // s231: map stretches with its column
     const centre = (i) => [G.cells[i][0] + G.cellsize / 2, G.cells[i][1] + G.cellsize / 2];
     // s225: "Whole year" mode = the 12 months summed (t CH4 per cell per year, 2022-24 rice area); same colour scale as the
     // annual map's 10 km detail (G.vmax_piece)
@@ -676,7 +677,7 @@
       const s = P.years.map((y, i) => ({ y, v: P.series[sel] ? P.series[sel][i] : null }));
       const t = document.createElement('p'); t.className = 'ttl'; t.textContent = selectedLabel();
       card.append(t);
-      const w = Math.max(260, card.clientWidth), h = 150, m = { t: 8, r: 10, b: 24, l: 40 };   // s230: smaller so selecting does not make the page taller
+      const w = Math.max(260, card.clientWidth), h = 200, m = { t: 8, r: 10, b: 24, l: 40 };   // s232: full size again; the unselected page reserves the room
       const x = d3.scaleLinear().domain([Y0, last]).range([m.l, w - m.r]);
       // rank among all provinces with data, each year (single-year values, 1 = highest)
       const rk = P.years.map((y) => ({ y, r: rankIn(sel, y) }));
@@ -685,7 +686,7 @@
       const rs = document.createElement('p'); rs.className = 'sub'; rs.id = 'chart-rank';
       rs.textContent = `Rank among provinces · ${year}: ${curR === null ? 'No data' : curR + ' of ' + n}` + (r3 && rankWindow(year) > 1 ? ` · ${rankBasis(year)} rank: ${r3}` : '');
       card.append(rs);
-      const h2 = 84, mr = { t: 8, r: 10, b: 22, l: 40 };
+      const h2 = 120, mr = { t: 8, r: 10, b: 22, l: 40 };
       const rmax = Math.max(10, d3.max(rk, (d) => d.r) || 10);
       const ry = d3.scaleLinear().domain([1, rmax]).range([mr.t, h2 - mr.b]);   // rank 1 at the top
       const s2 = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h2}`).attr('role', 'img').attr('aria-label', `Rank of ${sel} among provinces, 1988 to 2024`);
@@ -787,17 +788,50 @@
   const monthlySlot = document.getElementById('monthly-switch-slot');
   function gridVisible() { return !gridView.hidden; }
   // s228: both headers get the height of the taller one, so switching views does not move the map or the cards
-  function syncTop() {
-    const tops = [...document.querySelectorAll('#view-prov .topbar, #view-grid .topbar')];
-    const vis = tops.find((t) => t.offsetParent !== null); if (!vis) return;
-    vis.style.minHeight = '';
-    APP._topH = Math.max(APP._topH || 0, vis.offsetHeight);
-    tops.forEach((t) => { t.style.minHeight = APP._topH + 'px'; });
-    const cols = [...document.querySelectorAll('#view-prov .mapcol, #view-grid .mapcol')];
-    const vc = cols.find((c) => c.offsetParent !== null);
-    if (vc) { vc.style.minHeight = ''; APP._colH = Math.max(APP._colH || 0, vc.offsetHeight); cols.forEach((c) => { c.style.minHeight = APP._colH + 'px'; }); }
+  // s231: both views get the same header and map-column height. Both views are measured every time (the hidden one off-screen),
+  // and the sync re-runs whenever text in a header or under a map changes, so the two cannot drift apart between switches.
+  function heightsOf(selector) {
+    const els = [...document.querySelectorAll(selector)];
+    els.forEach((el) => { el.style.minHeight = ''; });
+    return els.map((el) => {
+      const view = el.closest('.view');
+      if (!view.hidden) return el.offsetHeight;
+      // the switch buttons live in the visible header only; put them in the hidden one while measuring it (they change the wrapping)
+      const home = mapViews.parentElement, slot = view.id === 'view-prov' ? annualSlot : monthlySlot, focused = mapViews.contains(document.activeElement) ? document.activeElement : null;
+      slot.append(mapViews); view.hidden = false; view.classList.add('measuring');
+      const h = el.offsetHeight;
+      view.classList.remove('measuring'); view.hidden = true; home.append(mapViews);
+      if (focused) focused.focus({ preventScroll: true });
+      return h;
+    });
   }
-  window.addEventListener('resize', () => { APP._topH = 0; APP._colH = 0; syncTop(); });
+  // s233: the annual side panel is always as tall as the selected state needs (ranking title + 10 rows + gap + province card),
+  // so the unselected ranking fills that height and selecting a province does not change the page height
+  function sideNeed() {
+    const side = document.getElementById('side'), rc = document.getElementById('rank-card'), card = document.getElementById('chart-card');
+    if (!side || side.offsetParent === null) return;
+    const sc = rc.querySelector('.rank-scroll'), row = parseFloat(getComputedStyle(sc).getPropertyValue('--rank-row-height')) || 30;
+    const chartOpen = !document.getElementById('chart').hidden;
+    if (chartOpen) APP._chartH = Math.max(APP._chartH || 0, card.offsetHeight);
+    const need = (rc.offsetHeight - sc.offsetHeight) + 10 * row + parseFloat(getComputedStyle(side).rowGap || 12) + Math.max(APP._chartH || 0, 412);
+    side.style.minHeight = need + 'px';
+  }
+  function syncTop() {
+    sideNeed();
+    const sw = mapViews.offsetHeight;   // the Annual/Monthly switch sits in only one header at a time; reserve its height in both
+    if (sw) [annualSlot, monthlySlot].forEach((sl) => { sl.style.minHeight = sw + 'px'; });
+    [['#view-prov .topbar', '#view-grid .topbar'], ['#view-prov .mapcol', '#view-grid .mapcol']].forEach(([a, b]) => {
+      const h = Math.max(...heightsOf(a + ', ' + b));
+      document.querySelectorAll(a + ', ' + b).forEach((el) => { el.style.minHeight = h + 'px'; });
+    });
+  }
+  let syncQueued = false;
+  // the measuring itself moves the switch buttons; those mutations are discarded (takeRecords) so the sync cannot loop
+  function queueSync() { if (syncQueued) return; syncQueued = true; requestAnimationFrame(() => { syncQueued = false; syncTop(); watch.takeRecords(); }); }
+  const watch = new MutationObserver(queueSync);
+  document.querySelectorAll('.view .topbar, .view .mapcol .info, .view .mapcol .controls, .view .mapcol .maptools, #grid-ref')
+    .forEach((el) => watch.observe(el, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] }));
+  window.addEventListener('resize', queueSync);
   function showView(seasonal) {
     APP.prov.stop();
     APP.grid.stop();
