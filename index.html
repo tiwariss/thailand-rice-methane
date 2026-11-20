@@ -95,18 +95,24 @@
           <button class="tool" id="grid-clear" hidden>Clear selection</button>
         </div>
       </div>
-      <section class="card" id="season-card" aria-labelledby="season-title">
-        <h2 id="season-title">When the methane is emitted</h2>
-        <p class="sub">Thailand, Gg CH₄ per month (reference period). Select a bar to show that month.</p>
-        <div id="season-chart"></div>
-      </section>
+      <div class="under-map top-right" id="grid-topright">
+        <div class="card legend" id="grid-legend">
+          <h2>Estimated methane allocation</h2>
+          <p class="sub">t CH₄ per 0.1° cell per month</p>
+          <p class="sub">Seasonal timing applied by province.</p>
+        </div>
+        <div class="card">
+          <h2>Cell detail</h2>
+          <p class="sub" id="grid-info">Hover or tap a cell to read its value.</p>
+          <p class="sub" id="grid-selected" hidden></p>
+        </div>
+      </div>
     </div>
     <div class="provgrid">
       <div class="mapcol">
         <div class="maptools">
           <div class="map-mode" id="grid-mode" role="group" aria-label="Map shows">
-            <button type="button" class="tool" data-mode="month" aria-pressed="true">Methane this month</button>
-            <button type="button" class="tool" data-mode="year" aria-pressed="false">Whole year</button>
+            <button type="button" class="tool" data-mode="month" aria-pressed="true">Methane</button>
             <button type="button" class="tool" data-mode="peak" aria-pressed="false">Peak month</button>
           </div>
           <span class="sub" id="grid-mode-note"></span>
@@ -115,34 +121,17 @@
         <p class="sub" id="grid-ref"></p>
         <div class="controls">
           <button class="play" id="grid-play" aria-pressed="false">▶ Play</button>
-          <input type="range" id="grid-slider" min="1" max="12" step="1" value="1" aria-label="Month">
+          <input type="range" id="grid-slider" min="1" max="13" step="1" value="1" aria-label="Month, or whole year at the end">
           <div class="ticks" id="grid-ticks"></div>
-        </div>
-        <div class="under-map">
-          <div class="card legend" id="grid-legend">
-            <h2>Estimated methane allocation</h2>
-            <p class="sub">t CH₄ per 0.1° cell per month</p>
-            <p class="sub">Seasonal timing applied by province.</p>
-          </div>
-          <div class="card">
-            <h2>Cell detail</h2>
-            <p class="sub" id="grid-info">Hover or tap a cell to read its value.</p>
-            <p class="sub" id="grid-selected" hidden></p>
-          </div>
         </div>
       </div>
       <aside class="side" aria-label="Seasonal estimates">
-        <div class="card sel" id="gprov-card">
-          <h2 id="gprov-title">One province by month</h2>
-          <p class="sub" id="gprov-sub"></p>
-          <div id="gprov-chart"></div>
-        </div>
-        <div class="card" id="region-card">
-          <h2>Which region emits when</h2>
-          <p class="sub" id="region-sub"></p>
-          <div id="region-chart"></div>
-          <div class="region-key" id="region-key"></div>
-          <p class="sub region-note">Regions: the four used in OAE rice statistics (North 17, Northeast 20, Central 26, South 14 provinces).</p>
+        <div class="card" id="when-card">
+          <h2 id="when-title">When the methane is emitted</h2>
+          <p class="sub" id="when-sub"></p>
+          <div class="region-key" id="when-key"></div>
+          <div id="when-chart"></div>
+          <p class="sub region-note">Regions: the four used in OAE rice statistics (North 17, Northeast 20, Central 26, South 14 provinces). Reference period: 2022–24 rice area, May 2022 – May 2023 planting dates.</p>
         </div>
       </aside>
     </div>

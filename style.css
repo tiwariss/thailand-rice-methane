@@ -311,3 +311,45 @@ footer .tools[hidden] { display: none; }
   #region-card { display: flex; flex-direction: column; min-height: 0; }
   #region-chart { flex: 1; min-height: 230px; contain: size; }
 }
+
+/* ===== s226: one interactive "when" chart; monthly header spans both columns ===== */
+#view-grid .topbar .annual-controls { grid-column: 1 / -1; }
+#view-grid .topbar .explore-tools { grid-column: auto; }
+#when-chart svg { display: block; }
+#when-chart svg text { font-size: 11px; fill: var(--ink); }
+#when-chart .tick line { stroke: #e6e6e6; }
+#when-chart .rbar:hover rect { filter: brightness(1.08); }
+#when-key { margin: 4px 0 8px; }
+#when-key button.rk-item { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer; font-size: 0.82rem; }
+#when-key button.rk-item:hover, #when-key button.rk-item:focus-visible { border-color: var(--ink); }
+#when-key button.rk-item[aria-pressed="true"] { border-color: var(--ink); font-weight: 700; }
+#when-key button.rk-item.dim { opacity: 0.5; }
+@media (min-width: 901px) {
+  #view-grid .side { grid-template-rows: minmax(0, 1fr); }
+  #when-card { display: flex; flex-direction: column; min-height: 0; }
+  #when-chart { flex: 1; min-height: 240px; contain: size; }
+}
+/* s226b: legend + cell detail sit top-right (user), like the annual trend card; header back to the left column */
+#view-grid .topbar .annual-controls { grid-column: 1; }
+#grid-topright { grid-column: 2; grid-row: 1; margin-top: 0; align-self: stretch; grid-template-columns: auto minmax(0, 1fr); }
+#grid-topright .card { padding: 6px 10px; }
+#grid-topright .card h2 { margin-bottom: 2px; }
+#grid-topright .sub { margin-bottom: 2px; }
+@media (max-width: 900px) { #grid-topright { grid-column: 1; grid-row: auto; } }
+
+/* ===== s227: whole year is the last step of the month slider, set apart so it reads as different ===== */
+#grid-ticks { padding-right: 0; }
+#grid-ticks .year-tick { font-weight: 700; color: var(--ink); border-left: 2px solid var(--ink); padding-left: 4px; margin-left: -6px; }
+#view-grid.whole-year #grid-period { color: #162d48; }
+#view-grid.whole-year .controls input[type=range] { accent-color: #162d48; }
+#view-grid.whole-year #grid-period::after { content: "  all 12 months"; font-size: 0.95rem; font-weight: 400; color: var(--muted); }
+
+/* ===== s228: same layout in both views, so switching Annual <-> Monthly does not move anything ===== */
+@media (min-width: 901px) {
+  #view-prov .topbar, #view-grid .topbar { grid-template-rows: minmax(115px, auto); }
+  .mapcol .maptools { height: 26px; margin-bottom: 6px; flex-wrap: nowrap; }
+  .mapcol .maptools .detailbar { margin: 0; }
+  #grid-mode .tool { padding: 2px 10px; line-height: 1.4; }
+  #grid-mode-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+}
+#view-prov .topbar, #view-grid .topbar { margin-bottom: 5px; }
