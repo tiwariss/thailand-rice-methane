@@ -46,6 +46,7 @@
   function baseMap(el, opts) {
     const map = L.map(el, Object.assign({ zoomSnap: 0.25, minZoom: 4, maxZoom: 11, attributionControl: false }, opts || {})).fitBounds(TH_BOUNDS);
     map._fitted = map.getSize().x > 0;
+    map.on('resize', () => limitView(map));
     [['base', 250], ['lines', 450], ['hl', 460]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
     map.getPane('lines').style.pointerEvents = 'none'; map.getPane('hl').style.pointerEvents = 'none';
     L.geoJSON(B, { pane: 'base', interactive: false, style: { color: '#ffffff', weight: 0.7, fillColor: LAND, fillOpacity: 1 } }).addTo(map);
@@ -60,22 +61,30 @@
       const [lo, la] = visualCentre(f), p = f.properties.province;
       const m = L.marker([la, lo], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: 'maplabel prov', html: p, iconSize: null }) });
       m.rank = (P.series[p] && P.series[p][lastYear]) || 0;   // priority when names collide
+      m.feature = f;
       return m;
     }).sort((a, b) => b.rank - a.rank);
     const nameLayer = L.layerGroup(names);
     function showNames() {
       if (map.getZoom() < 7.5) { nameLayer.remove(); return; }
+      // s241: names grow with zoom, like web maps (9 px when they first appear, about 16 px fully zoomed in)
+      map.getContainer().style.setProperty('--label-size', Math.round(9 + (Math.min(map.getZoom(), 11) - 7.5) * 2) + 'px');
       nameLayer.addTo(map);
-      const kept = [];
+      // s242: a name is shown only if it fits inside its own province (all four corners of the text inside the shape, like web
+      // maps) and does not overlap a name already placed (higher methane first)
+      const kept = [], box = map.getContainer().getBoundingClientRect(), k = box.width / map.getSize().x;   // k: page zoom
+      const inside = (f, x, y) => { const ll = map.containerPointToLatLng([(x - box.left) / k, (y - box.top) / k]); return d3.geoContains(f, [ll.lng, ll.lat]); };
       names.forEach((m) => {
         const el = m.getElement(); if (!el) return;
         el.style.visibility = 'visible';
         const r = el.getBoundingClientRect(), pad = 3;
-        const hit = kept.some((k) => !(r.right + pad < k.left || r.left - pad > k.right || r.bottom + pad < k.top || r.top - pad > k.bottom));
-        if (hit) el.style.visibility = 'hidden'; else kept.push(r);
+        const fits = [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]].every(([x, y]) => inside(m.feature, x, y));
+        const hit = kept.some((q) => !(r.right + pad < q.left || r.left - pad > q.right || r.bottom + pad < q.top || r.top - pad > q.bottom));
+        if (!fits || hit) el.style.visibility = 'hidden'; else kept.push(r);
       });
     }
     map.on('zoomend moveend', showNames); showNames();
+    setTimeout(() => limitView(map), 0);
     return map;
   }
   // s239: visual centre of a province = the point inside it furthest from its border (a grid search, refined twice), so the
@@ -103,7 +112,14 @@
     }
     _vc.set(key, best); return best;
   }
-  function ensureFit(map) { map.invalidateSize(); if (!map._fitted && map.getSize().x > 0) { map.fitBounds(TH_BOUNDS, { animate: false }); map._fitted = true; } }   // s223: instant, so a zoom from a shared link is not overridden
+  // s240: the map cannot zoom out past the whole-Thailand view or pan beyond the grey basemap, so no white space shows.
+  // Applied only once the map has a size (a hidden map has none, which earlier made a pan limit shift the opening view).
+  const BASE_BOUNDS = [[0, 90], [25, 112]];
+  function limitView(map) {
+    if (!map.getSize().x) return;
+    map.setMinZoom(map.getBoundsZoom(TH_BOUNDS)); map.setMaxBounds(BASE_BOUNDS); map.options.maxBoundsViscosity = 1;
+  }
+  function ensureFit(map) { map.invalidateSize(); if (!map._fitted && map.getSize().x > 0) { map.fitBounds(TH_BOUNDS, { animate: false }); map._fitted = true; } limitView(map); }   // s223: instant, so a zoom from a shared link is not overridden
   function player(btn, step, intervalKey) {
     let timer = null;
     const stop = () => { if (timer) clearInterval(timer); timer = null; btn.setAttribute('aria-pressed', 'false'); btn.textContent = '▶ Play'; };
@@ -159,24 +175,16 @@
     // selected province (on its cut cells). The checkbox now only makes the province borders stronger.
     const LINE = '#bdbdbd';
     // share of a province's allocated methane sitting in bright cells (CIELAB L > 62) in the current view
-    // s239: share of the province's methane in bright cells (0-1); the border colour blends with it instead of switching
-    const brightShare = (p) => { const list = G.byprov[p] || []; let b = 0, t = 0;
-      list.forEach(([i, w]) => { t += w; if (d3.lab(cellColour(i)).l > 62) b += w; }); return t > 0 ? b / t : 0; };
-    const borderMix = d3.interpolateRgb(LINE, '#3a3a3a'), borderMixThin = d3.interpolateRgb('#ffffff', '#1a1a1a');
-    const ease = (v) => Math.max(0, Math.min(1, (v - 0.25) / 0.5));   // 0 below 25% bright, 1 above 75%, smooth in between
     // s236: cell lines follow the cell: dark on bright (yellow) cells, light grey on dark cells; thicker as you zoom in
     const cellLine = (fill) => { const z = map.getZoom(), bright = fill && d3.lab(fill).l > 62;
       return { stroke: true, color: bright ? 'rgba(0,0,0,0.55)' : LINE, weight: z >= 10 ? 1.4 : z >= 9 ? 1.1 : z >= 8 ? 0.9 : 0.6, opacity: 0.95 }; };
     function lineStyle() {
       const z = map.getZoom();
       const pw = gridLines ? (z >= 8 ? 1.8 : z >= 7 ? 1.4 : 1.0) : 0.4;
-      // s237: a province's border is dark when most of its cells are bright (yellow), light grey otherwise
-      provLines.eachLayer((l) => {
-        const v = ease(brightShare(l.feature.properties.province));
-        l.setStyle(gridLines ? { color: borderMix(v), weight: pw, opacity: z >= 7 ? 0.95 : 0.85 }
-          : { color: borderMixThin(v), weight: pw, opacity: 0.35 - 0.05 * v });
-      });
-      provCasing.setStyle({ weight: pw + (gridLines ? 1.6 : 0.9), opacity: gridLines ? 0.35 : 0.18 });
+      // s240: one colour for every border (light grey on a dark casing). Per-province colours (s237-239) drew each shared border
+      // twice in two colours, which looked patchy.
+      provLines.setStyle(gridLines ? { color: LINE, weight: pw, opacity: z >= 7 ? 0.95 : 0.9 } : { color: '#d6d6d6', weight: 0.6, opacity: 0.6 });
+      provCasing.setStyle({ weight: (gridLines ? pw : 0.6) + (gridLines ? 1.6 : 1.2), opacity: gridLines ? 0.4 : 0.28 });
       cut.eachLayer((r) => r.setStyle(cellLine(r.options.fillColor)));
     }
     map.on('zoomend', lineStyle);
