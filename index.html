@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=1280">   <!-- s249: phones show the desktop layout, zoomed out; pinch to zoom -->
 <title>Thailand Rice Methane Explorer</title>
 <link rel="stylesheet" href="vendor/leaflet.css">
 <link rel="stylesheet" href="style.css">
@@ -91,8 +91,10 @@
             <div class="search-row"><input id="grid-search" list="province-options" placeholder="Type a province name" autocomplete="off"><button class="tool" type="submit">Go</button></div>
             <span id="grid-search-message" role="status"></span>
           </form>
-          <div><label for="grid-view-mode">Show on map</label>
-            <select id="grid-view-mode"><option value="month">Methane in each 10 km cell</option><option value="peak">Peak month by province</option></select>
+          <div><span class="lbl-like" id="grid-view-label">Show on map</span>
+            <div class="seg" id="grid-view-mode" role="group" aria-labelledby="grid-view-label">
+              <button type="button" data-mode="month" aria-pressed="true">Methane per cell</button><button type="button" data-mode="peak" aria-pressed="false">Peak month</button>
+            </div>
           </div>
           <button class="tool" id="grid-clear" hidden>Clear selection</button>
           <p class="sub" id="grid-mode-note"></p>

@@ -44,7 +44,7 @@
     return ctl;
   }
   function baseMap(el, opts) {
-    const map = L.map(el, Object.assign({ zoomSnap: 0.25, minZoom: 4, maxZoom: 11, attributionControl: false }, opts || {})).fitBounds(TH_BOUNDS);
+    const map = L.map(el, Object.assign({ zoomSnap: 0.25, minZoom: 4, maxZoom: 11, attributionControl: false }, opts || {})).fitBounds(TH_BOUNDS);   // s252: wheel zoom on the map kept (user)
     map._fitted = map.getSize().x > 0;
     map.on('resize', () => limitView(map));
     [['base', 250], ['lines', 450], ['hl', 460]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
@@ -335,7 +335,7 @@
     };
     function setMode(m) {
       mode = m;
-      const sel = document.getElementById('grid-view-mode'); if (sel && sel.value !== m) sel.value = m;
+      document.querySelectorAll('#grid-view-mode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));   // s251
       if (m === 'peak') { peakLayer.addTo(map); peakLegend.addTo(map); } else { map.removeLayer(peakLayer); peakLegend.remove(); }
       recolour(); drawLegend(); info(hover);
       document.getElementById('grid-mode-note').textContent = m === 'peak'
@@ -343,7 +343,7 @@
         : 'Move the slider to the end for the whole year.';
       if (APP.writeHash) APP.writeHash();
     }
-    document.getElementById('grid-view-mode').addEventListener('change', (e) => setMode(e.target.value));
+    document.querySelectorAll('#grid-view-mode button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
     document.getElementById('grid-lines-toggle').addEventListener('change', (e) => { gridLines = e.target.checked; lineStyle(); });
     // s226: ONE interactive "when" chart (replaces the Thailand total, region and province charts, which repeated the same months).
     // No province selected: Thailand stacked by region; a region in the key isolates it (click again for all). Province selected:
@@ -627,6 +627,7 @@
       sel = null;
       selectionSource = null;
       document.getElementById('clear-selection').hidden = true; showSwitch(false);
+      compare = []; addMode = false; drawCompareOutlines();
       if (hl) { map.removeLayer(hl); hl = null; }
       showDetail();
       geo.eachLayer((l) => {
@@ -642,8 +643,24 @@
       moveToBounds(nearbyBounds, { maxZoom });
       if (APP.writeHash) APP.writeHash();
     }
+    // s249: compare up to 4 provinces in the province charts. "+ Compare" turns on adding mode; clicks on the map, the ranking
+    // or the search then add (or remove) provinces instead of moving the selection. The map stays on the first province.
+    const CMP_COL = [ink, '#c2185b', '#0097a7', '#8d6e63'];
+    let compare = [], addMode = false, cmpLayer = null;
+    function drawCompareOutlines() {
+      if (cmpLayer) { map.removeLayer(cmpLayer); cmpLayer = null; }
+      if (!compare.length) return;
+      cmpLayer = L.layerGroup(compare.filter((q) => byName[q]).map((q, k) => L.geoJSON(byName[q].feature, { pane: 'hl', interactive: false,
+        style: { color: CMP_COL[k + 1], weight: 2.5, fill: false, dashArray: '6 4' } }))).addTo(map);
+    }
+    function toggleCompare(q) {
+      if (compare.includes(q)) compare = compare.filter((c) => c !== q);
+      else if (compare.length < 3) compare.push(q);
+      drawCompareOutlines(); chart();
+    }
     function select(p) {
       const province = provinceForYear(p);
+      if (addMode && sel) { if (province !== sel) toggleCompare(province); return; }
       if (sel === province) { clearSelection(); return; }
       selectionSource = p;
       sel = province;
@@ -809,8 +826,29 @@
       const card = document.getElementById('chart'); card.hidden = false; document.getElementById('chart-hint').hidden = true;
       card.replaceChildren();
       const s = P.years.map((y, i) => ({ y, v: P.series[sel] ? P.series[sel][i] : null }));
-      const t = document.createElement('p'); t.className = 'ttl'; t.textContent = selectedLabel();
-      card.append(t);
+      const all = [sel, ...compare];   // s249: first = the selected province, then the compared ones
+      const seriesOf = (q) => P.years.map((y, i) => ({ y, v: P.series[q] ? P.series[q][i] : null }));
+      const head = document.createElement('div'); head.className = 'cmp-head';
+      const t = document.createElement('p'); t.className = 'ttl'; t.textContent = compare.length ? 'Comparing provinces' : selectedLabel();
+      const add = document.createElement('button'); add.type = 'button'; add.className = 'tool cmp-add' + (addMode ? ' on' : '');
+      add.disabled = compare.length >= 3 && !addMode;
+      add.textContent = addMode ? (compare.length >= 3 ? 'Done (4 of 4)' : 'Done adding') : compare.length >= 3 ? 'Up to 4 provinces' : '+ Compare';
+      add.title = 'Then click provinces on the map or in the ranking to add or remove them';
+      add.addEventListener('click', () => { addMode = !addMode; chart(); });
+      head.append(t, add); card.append(head);
+      const chips = document.createElement('div'); chips.className = 'cmp-chips';
+      all.forEach((q, k) => {
+        const c = document.createElement('span'); c.className = 'cmp-chip';
+        const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = CMP_COL[k];
+        const v = val(q, year);
+        const tx = document.createElement('span'); tx.className = 'cmp-t'; tx.textContent = `${q} ${v === null ? 'no data' : fmt(v, 1) + ' Gg'}`; c.title = tx.textContent;
+        c.append(sw, tx);   // s252: one line; long names are shortened with an ellipsis
+        if (k > 0) { const x = document.createElement('button'); x.type = 'button'; x.className = 'cmp-x'; x.textContent = '✕'; x.title = 'Remove ' + q;
+          x.addEventListener('click', () => toggleCompare(q)); c.append(x); }
+        chips.append(c);
+      });
+      if (addMode) { const hint = document.createElement('span'); hint.className = 'cmp-hint'; hint.textContent = 'Click provinces on the map or in the ranking'; chips.append(hint); }
+      card.append(chips);
       const w = Math.max(260, card.clientWidth), h = 200, m = { t: 8, r: 10, b: 24, l: 40 };   // s232: full size again; the unselected page reserves the room
       const x = d3.scaleLinear().domain([Y0, last]).range([m.l, w - m.r]);
       // rank among all provinces with data, each year (single-year values, 1 = highest)
@@ -818,10 +856,11 @@
       const curR = rankIn(sel, year), n = Object.keys(P.series).filter((p) => val(p, year) !== null).length;
       const r3 = ranksOf(year).pos.get(sel);
       const rs = document.createElement('p'); rs.className = 'sub'; rs.id = 'chart-rank';
-      rs.textContent = `Rank in ${year}: ${curR === null ? 'no data' : curR + ' of ' + n}` + (r3 && rankWindow(year) > 1 ? ` (${rankBasis(year)}: ${r3})` : '');
+      rs.textContent = (compare.length ? `${sel}: rank` : 'Rank') + ` in ${year}: ${curR === null ? 'no data' : curR + ' of ' + n}` + (r3 && rankWindow(year) > 1 ? ` (${rankBasis(year)}: ${r3})` : '') + (compare.length ? ' · lines: rank of each province' : '');
       card.append(rs);
       const h2 = 120, mr = { t: 8, r: 10, b: 22, l: 40 };
-      const rmax = Math.max(10, d3.max(rk, (d) => d.r) || 10);
+      const rkAll = all.map((q) => P.years.map((y) => ({ y, r: rankIn(q, y) })));
+      const rmax = Math.max(10, d3.max(rkAll.flat(), (d) => d.r) || 10);
       const ry = d3.scaleLinear().domain([1, rmax]).range([mr.t, h2 - mr.b]);   // rank 1 at the top
       const s2 = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h2}`).attr('role', 'img').attr('aria-label', `Rank of ${sel} among provinces, 1988 to 2024`);
       s2.append('g').attr('transform', `translate(0,${h2 - mr.b})`).call(d3.axisBottom(x).ticks(Math.min(8, Math.floor(w / 60))).tickFormat(d3.format('d')));
@@ -830,17 +869,23 @@
       s2.append('rect').attr('x', mr.l).attr('y', ry(1) - 4).attr('width', w - mr.l - mr.r).attr('height', ry(10) - ry(1) + 8).attr('fill', '#f2f2f2');
       s2.append('text').attr('x', w - mr.r - 2).attr('y', ry(10) - 2).attr('text-anchor', 'end').style('fill', '#666').text('Top 10');
       s2.append('line').attr('x1', x(year)).attr('x2', x(year)).attr('y1', mr.t).attr('y2', h2 - mr.b).attr('stroke', '#9a9a9a').attr('stroke-dasharray', '3 3');
+      rkAll.slice(1).forEach((r_, k) => s2.append('path').datum(r_).attr('class', 'cmp-line').attr('fill', 'none').attr('stroke', CMP_COL[k + 1]).attr('stroke-width', 1.4).attr('d', d3.line().defined((d) => d.r !== null).x((d) => x(d.y)).y((d) => ry(d.r))));
       s2.append('path').datum(rk).attr('fill', 'none').attr('stroke', ink).attr('stroke-width', 1.4).attr('d', d3.line().defined((d) => d.r !== null).x((d) => x(d.y)).y((d) => ry(d.r)));
       if (curR !== null) s2.append('circle').attr('id', 'rank-dot').attr('cx', x(year)).attr('cy', ry(curR)).attr('r', 4).attr('fill', d3.interpolateCividis(0.92)).attr('stroke', ink).attr('stroke-width', 1.2);
       const cur = val(sel, year);
       const sub = document.createElement('p'); sub.className = 'sub'; sub.id = 'chart-sub';
       sub.textContent = `${metricLabels[metric]}, Gg per year · ${year}: ${cur === null ? 'No data' : fmt(cur, 2) + ' Gg'}`;
       card.append(sub);
-      const yy = d3.scaleLinear().domain([0, (d3.max(s, (d) => d.v) || 1) * 1.1]).nice().range([h - m.b, m.t]);
+      const sAll = all.map(seriesOf);
+      const yy = d3.scaleLinear().domain([0, (d3.max(sAll.flat(), (d) => d.v) || 1) * 1.1]).nice().range([h - m.b, m.t]);
       const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', `Annual estimated methane for ${sel}, 1988 to 2024`);
       svg.append('g').attr('transform', `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(Math.min(8, Math.floor(w / 60))).tickFormat(d3.format('d')));
       svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(yy).ticks(5).tickSize(-(w - m.l - m.r))).call((g) => g.select('.domain').remove());
       svg.append('line').attr('x1', x(year)).attr('x2', x(year)).attr('y1', m.t).attr('y2', h - m.b).attr('stroke', '#9a9a9a').attr('stroke-dasharray', '3 3');
+      sAll.slice(1).forEach((q, k) => {
+        svg.append('path').datum(q).attr('class', 'cmp-line').attr('fill', 'none').attr('stroke', CMP_COL[k + 1]).attr('stroke-width', 1.6).attr('d', d3.line().defined((d) => d.v !== null).x((d) => x(d.y)).y((d) => yy(d.v)));
+        const cv = val(compare[k], year); if (cv !== null) svg.append('circle').attr('cx', x(year)).attr('cy', yy(cv)).attr('r', 3.5).attr('fill', CMP_COL[k + 1]);
+      });
       svg.append('path').datum(s).attr('fill', 'none').attr('stroke', ink).attr('stroke-width', 1.6).attr('d', d3.line().defined((d) => d.v !== null).x((d) => x(d.y)).y((d) => yy(d.v)));
       if (cur !== null) svg.append('circle').attr('id', 'chart-dot').attr('cx', x(year)).attr('cy', yy(cur)).attr('r', 4.5).attr('fill', d3.interpolateCividis(0.92)).attr('stroke', ink).attr('stroke-width', 1.2);
     }
@@ -947,7 +992,7 @@
     const sc = rc.querySelector('.rank-scroll'), row = parseFloat(getComputedStyle(sc).getPropertyValue('--rank-row-height')) || 30;
     const chartOpen = !document.getElementById('chart').hidden;
     if (chartOpen) APP._chartH = Math.max(APP._chartH || 0, card.offsetHeight);
-    const need = (rc.offsetHeight - sc.offsetHeight) + 10 * row + parseFloat(getComputedStyle(side).rowGap || 12) + Math.max(APP._chartH || 0, 412);
+    const need = (rc.offsetHeight - sc.offsetHeight) + 10 * row + parseFloat(getComputedStyle(side).rowGap || 12) + Math.max(APP._chartH || 0, 448);
     side.style.minHeight = need + 'px';
   }
   function syncTop() {
@@ -978,7 +1023,7 @@
     document.getElementById('prov-tools').hidden = seasonal;
     gridButton.setAttribute('aria-pressed', String(seasonal));
     provButton.setAttribute('aria-pressed', String(!seasonal));
-    syncTop();
+    syncTop();   // s250: the page scale is not recomputed on a view switch, so both views share it
     ensureFit(seasonal ? APP.grid.map : APP.prov.map);
     if (!seasonal) APP.prov.refreshCharts(); else APP.grid.whenChart();
     APP.writeHash();
@@ -993,6 +1038,12 @@
     try { history.replaceState(null, '', h); } catch (e) { /* some browsers block this on file:// */ }
   };
   syncTop();
+  // s250 fit-to-window scaling tried and removed at the user's request (s252); the page keeps its CSS sizing
+  // s251 (user): over the ranking the scroll wheel scrolls the page; the list itself scrolls by its scroll bar or the keyboard
+  document.querySelectorAll('.rank-scroll').forEach((el) => el.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) return;
+    e.preventDefault(); window.scrollBy({ top: e.deltaY, left: 0, behavior: 'auto' });
+  }, { passive: false }));
   (function readHash() {
     const parts = decodeURIComponent(location.hash.slice(1)).split('/');
     APP._reading = true;
