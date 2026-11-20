@@ -51,7 +51,7 @@
     L.geoJSON(B, { pane: 'base', interactive: false, style: { color: '#ffffff', weight: 0.7, fillColor: LAND, fillOpacity: 1 } }).addTo(map);
     return map;
   }
-  function ensureFit(map) { map.invalidateSize(); if (!map._fitted && map.getSize().x > 0) { map.fitBounds(TH_BOUNDS); map._fitted = true; } }
+  function ensureFit(map) { map.invalidateSize(); if (!map._fitted && map.getSize().x > 0) { map.fitBounds(TH_BOUNDS, { animate: false }); map._fitted = true; } }   // s223: instant, so a zoom from a shared link is not overridden
   function player(btn, step, intervalKey) {
     let timer = null;
     const stop = () => { if (timer) clearInterval(timer); timer = null; btn.setAttribute('aria-pressed', 'false'); btn.textContent = '▶ Play'; };
@@ -102,7 +102,28 @@
     // s221: same behaviour as the annual map: select zooms to the province and fades the rest; selecting it again,
     // the Clear button or Escape clears and zooms back out one step
     const gridClear = document.getElementById('grid-clear');
-    function fade() { layers.forEach((r, i) => r.setStyle({ fillOpacity: !gsel || (cellProv[i] && cellProv[i].p === gsel) ? 1 : 0.35 })); }
+    // s223: the selected province is redrawn from its cells cut along the province border (data/clipped_cells.js, the
+    // same pieces as the annual 10 km detail), so no square spills over the outline; all whole cells fade underneath
+    const cut = L.layerGroup().addTo(map);
+    map.createPane('cut').style.zIndex = 420;
+    const cutRenderer = L.canvas({ pane: 'cut', padding: 0.3 });
+    function fade() {
+      layers.forEach((r) => r.setStyle({ fillOpacity: gsel ? 0.35 : 1 }));
+      cut.clearLayers();
+      if (!gsel) return;
+      const CC = (window.DATA_CLIPPED_CELLS || {})[gsel] || {};
+      (G.byprov[gsel] || []).forEach(([i]) => {
+        const g = CC[i];
+        if (!g) return;   // no piece = a sliver too small to keep (same rule as the annual 10 km detail)
+        const shp = L.polygon(toLL(g), { renderer: cutRenderer, pane: 'cut', stroke: false, fillOpacity: 1, fillColor: col(G.months[i][month - 1]) });
+        shp.cellIndex = i;
+        shp.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
+        shp.on('mouseover', () => { hover = i; info(i); });
+        shp.on('mouseout', () => { hover = null; info(null); });
+        shp.on('click', clearProv);   // like the annual map: a click inside the selected province clears it
+        cut.addLayer(shp);
+      });
+    }
     function flyTo(bounds, options) {
       map.stop(); map.invalidateSize({ animate: false });
       if (reduceMotion || APP._reading) map.fitBounds(bounds, { ...options, animate: false });
@@ -217,6 +238,7 @@
       document.getElementById('grid-period').textContent = MONTHS[m - 1];
       document.getElementById('grid-total').textContent = `Thailand estimate: ${fmt(NAT[m - 1], 1)} Gg CH₄`;
       layers.forEach((r, i) => r.setStyle({ fillColor: col(G.months[i][m - 1]) }));
+      if (typeof cut !== 'undefined') cut.eachLayer((r) => r.setStyle({ fillColor: col(G.months[r.cellIndex][m - 1]) }));
       layers.forEach((r) => { if (r.isTooltipOpen()) r.setTooltipContent(tipText(r.cellIndex)); });
       info(hover);
       seasonChart();
