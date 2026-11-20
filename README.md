@@ -1,28 +1,41 @@
-# Thailand rice methane: provinces, 10 km grid and months
+# Thailand rice methane explorer
 
-Interactive map and report on where and when Thailand's rice methane (CH₄) is emitted. Thailand's first Biennial Transparency Report (BTR1) gives rice methane at national scale; this work spreads that inventory across the 77 provinces (shown as 76: Bueng Kan is included in Nong Khai), places it on a 0.1° (~10 km) grid and spreads it over the months of the year.
+Where in Thailand does rice methane come from, and when is it emitted? Thailand's first Biennial Transparency Report (BTR1) gives a national total. This project estimates how emissions are distributed across provinces, within provinces on a 0.1° grid (about 10 km), and across the months of the year.
 
-- **Open the map:** https://tiwariss.github.io/thailand-rice-methane/
-- **Report (PDF):** [report/Thailand_rice_methane_report.pdf](report/Thailand_rice_methane_report.pdf)
-- **Data (CSV):** [data_csv/](data_csv/), described in [data_csv/README.txt](data_csv/README.txt)
+- [Open the interactive map](https://tiwariss.github.io/thailand-rice-methane/)
+- [Read the report (PDF)](report/Thailand_rice_methane_report.pdf)
+- [Download the data (CSV)](data_csv/) and see the [data notes](data_csv/README.txt)
 
-## What the map shows
-- **Provinces, 1988–2024:** rice CH₄ per province and year (Gg CH₄ per year), as total, water-controlled (irrigated main season plus dry-season rice) or rain-fed. Search a province, play the years, open its trend and rank. The national total for the year is shown with BTR1's official value for 2000–2022.
-- **10 km detail:** select a province to see its rice methane on the 0.1° grid (2022–24 rice area). Areas without rice read as 0.
-- **Seasonal grid:** the 0.1° grid month by month (planting dates May 2022 – May 2023); August to November carries most of the year's methane.
+## Explore the maps
 
-## How the numbers are made
-- Provincial values: official rice area by province (Office of Agricultural Economics, OAE) for each year, with BTR1's 2022 emission factors and national shares of irrigated (26.30%) and flood-prone (11.09%) rice. 2022 reproduces BTR1's national total; for 2000–2021 the national sums stay within 2% of BTR1's official series. All other years and every provincial value are our calculation, not official statistics.
-- 10 km grid and months: rice placed within each province with Open-SEA-Rice-10 and a Sentinel-2 dry-season water signal; months from MODIS flooding dates. These are estimated allocations and are not validated at cell level.
-- Full method, checks and limits: see the report.
+- **Annual map, 1988–2024.** Use the year slider or select a province to see its emissions and rank. The map can show total, water-controlled, or rain-fed rice emissions. Use **+ Compare** to compare up to four provinces and the **10 km detail** switch to see the estimated grid within a selected province. The annual trend chart marks the official BTR1 totals for 2000–2022 with dots.
+- **Monthly map.** Move the slider through the months or to **Whole year**. Choose a region in the chart to focus the map on that region, or select a province to see its seasonal pattern. The grid uses average rice area for 2022–24 and satellite flooding dates from May 2022 to May 2023.
+- **On a phone.** The desktop layout opens zoomed out. Pinch outside the map to enlarge the page, or rotate the phone for more room.
+
+The annual map shows **77 provinces from 2012 onward**. Bueng Kan is grouped with Nong Khai through 2011. Three other historical splits are shown with their former provinces through 1993. The ranking uses up to three years of data and starts a new averaging window in 2012 so it compares consistent reporting areas.
+
+## How to read the estimates
+
+The annual map combines harvested rice areas from Thailand's Office of Agricultural Economics (OAE) with BTR1's 2022 emission factors and national water-regime shares. The 10 km grid uses satellite data to estimate where rice and irrigation occur within provinces. The monthly calendar estimates emission timing from flooding dates. A grid value is an estimated allocation, and the report explains the checks and limits of that allocation.
+
+Each file has a header row with units in the emissions column names. **Gg** means gigagrams, equivalent to 1,000 tonnes.
+
+| File | What it contains |
+| --- | --- |
+| [Provincial annual estimates](data_csv/provinces_annual.csv) | Total, water-controlled, and rain-fed CH₄ by province and year, in Gg CH₄ per year |
+| [Thailand annual estimates](data_csv/national_annual.csv) | National sums, reporting-area counts, and the official BTR1 comparison, in Gg CH₄ per year |
+| [Monthly grid](data_csv/grid_monthly.csv) | Coordinates and estimated CH₄ by cell, in tonnes per month and per year |
+| [Grid by province](data_csv/grid_by_province.csv) | Estimated CH₄ assigned to each province's portion of a cell, in tonnes per year |
 
 ## Run it offline
-Download or clone this repository and open `index.html` in a browser. Everything it needs is included (`vendor/`, `data/`).
+
+Download or clone the repository, then open `index.html` in a browser. The map, report, and CSVs are included here. The analysis workflow is maintained separately.
 
 ## Sources and licences
-- Thailand BTR1 (2024), UNFCCC; OAE rice statistics.
-- Open-SEA-Rice-10 (Ginting et al., 2025; Zenodo 10.5281/zenodo.14627003) and its 0.1° gridding by Casas and Ismail (2026; Zenodo 10.5281/zenodo.20453139), both CC BY 4.0. The grid here is derived from them.
-- Province outlines and basemap: Natural Earth (public domain), simplified for display.
-- Libraries: Leaflet 1.9.4 (BSD 2-Clause) and D3 7.9.0 (ISC); licence texts in [vendor/LICENSES.txt](vendor/LICENSES.txt).
+
+- Thailand BTR1 (2024), UNFCCC, and OAE rice statistics. See the report for the input sources and methods.
+- Open-SEA-Rice-10 (Ginting et al., 2025, Zenodo 10.5281/zenodo.14627003) and its 0.1° gridding by Casas and Ismail (2026, Zenodo 10.5281/zenodo.20453139), both CC BY 4.0.
+- Natural Earth province outlines and basemap are public domain and simplified for display.
+- Leaflet 1.9.4 (BSD 2-Clause) and D3 7.9.0 (ISC). See the [bundled licence texts](vendor/LICENSES.txt).
 
 Author: Sirawit Tangchitwatthanakon, The Hong Kong University of Science and Technology (Guangzhou), 2026.
