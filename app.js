@@ -101,14 +101,16 @@
     let gridLines = false;
     // s234: the cell lines fade with zoom: almost invisible for the whole country (zoom ~5.5), clear inside a province (zoom 8-9);
     // province borders stay white, thinner when zoomed out
-    const cellLine = () => { const z = map.getZoom(); return { stroke: true, color: '#ffffff', weight: z >= 8 ? 0.6 : 0.4, opacity: Math.min(0.5, Math.max(0.06, (z - 5.5) * 0.15)) }; };
+    // s235 (user): light grey lines. Cell lines are never drawn on the whole-country map; they appear automatically inside the
+    // selected province (on its cut cells). The checkbox now only makes the province borders stronger.
+    const LINE = '#bdbdbd';
+    const cellLine = () => ({ stroke: true, color: LINE, weight: map.getZoom() >= 8 ? 0.9 : 0.6, opacity: 0.95 });
     function lineStyle() {
-      const st = gridLines ? cellLine() : { stroke: false };
-      layers.forEach((r) => r.setStyle(st)); cut.eachLayer((r) => r.setStyle(st));
       const z = map.getZoom();
-      provLines.setStyle(gridLines ? { color: '#ffffff', weight: z >= 8 ? 1.8 : z >= 7 ? 1.4 : 1.0, opacity: z >= 7 ? 0.95 : 0.8 } : { color: '#ffffff', weight: 0.4, opacity: 0.35 });
+      provLines.setStyle(gridLines ? { color: LINE, weight: z >= 8 ? 1.8 : z >= 7 ? 1.4 : 1.0, opacity: z >= 7 ? 0.95 : 0.85 } : { color: '#ffffff', weight: 0.4, opacity: 0.35 });
+      cut.eachLayer((r) => r.setStyle(cellLine()));
     }
-    map.on('zoomend', () => { if (gridLines) lineStyle(); });
+    map.on('zoomend', lineStyle);
     // s220: a click selects the whole province (outline on the map + its monthly chart); hover still reads one cell
     let hl = null;
     const selectedInfo = document.getElementById('grid-selected');
@@ -137,7 +139,7 @@
         if (!g) return;   // no piece = a sliver too small to keep (same rule as the annual 10 km detail)
         const shp = L.polygon(toLL(g), { renderer, stroke: false, fillOpacity: 1, fillColor: cellColour(i) });
         shp.cellIndex = i;
-        if (gridLines) shp.setStyle(cellLine());
+        shp.setStyle(cellLine());
         shp.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
         shp.on('mouseover', () => { hover = i; info(i); });
         shp.on('mouseout', () => { hover = null; info(null); });
