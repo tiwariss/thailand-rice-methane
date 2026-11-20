@@ -59,7 +59,7 @@
     const lastYear = P.years.length - 1;
     const names = P.geo.features.map((f) => {
       const [lo, la] = visualCentre(f), p = f.properties.province;
-      const m = L.marker([la, lo], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: 'maplabel prov', html: p, iconSize: null }) });
+      const m = L.marker([la, lo], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: 'maplabel prov', html: `<span>${p}</span>`, iconSize: [0, 0] }) });   // s244: the span is centred on the point
       m.rank = (P.series[p] && P.series[p][lastYear]) || 0;   // priority when names collide
       m.feature = f;
       return m;
@@ -75,12 +75,13 @@
       const kept = [], box = map.getContainer().getBoundingClientRect(), k = box.width / map.getSize().x;   // k: page zoom
       const inside = (f, x, y) => { const ll = map.containerPointToLatLng([(x - box.left) / k, (y - box.top) / k]); return d3.geoContains(f, [ll.lng, ll.lat]); };
       names.forEach((m) => {
-        const el = m.getElement(); if (!el) return;
+        const el = m.getElement() && m.getElement().firstChild; if (!el) return;
         el.style.visibility = 'visible';
-        const r = el.getBoundingClientRect(), pad = 3;
+        const r = el.getBoundingClientRect(), pad = 3;   // the text itself (the marker box has no size)
         const fits = [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]].every(([x, y]) => inside(m.feature, x, y));
         const hit = kept.some((q) => !(r.right + pad < q.left || r.left - pad > q.right || r.bottom + pad < q.top || r.top - pad > q.bottom));
-        if (!fits || hit) el.style.visibility = 'hidden'; else kept.push(r);
+        const onMap = r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom;   // no names cut by the map edge
+        if (!fits || hit || !onMap) el.style.visibility = 'hidden'; else kept.push(r);
       });
     }
     map.on('zoomend moveend', showNames); showNames();

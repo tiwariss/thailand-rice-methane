@@ -392,3 +392,6 @@ main { position: relative; }
 /* s239: province borders fade to their new colour when the month changes */
 .leaflet-lines-pane path { transition: stroke 450ms ease, stroke-opacity 450ms ease; }
 .maplabel.prov { font-size: var(--label-size, 10px); }   /* s241: set from the zoom level */
+/* s244: names are centred on their point (Leaflet's own transform positions the box; the inner text is shifted back by half) */
+.maplabel.prov { transform: none; }
+.maplabel.prov > span { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap; }
