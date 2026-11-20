@@ -106,6 +106,7 @@
         <div class="maptools">
           <div class="map-mode" id="grid-mode" role="group" aria-label="Map shows">
             <button type="button" class="tool" data-mode="month" aria-pressed="true">Methane this month</button>
+            <button type="button" class="tool" data-mode="year" aria-pressed="false">Whole year</button>
             <button type="button" class="tool" data-mode="peak" aria-pressed="false">Peak month</button>
           </div>
           <span class="sub" id="grid-mode-note"></span>
@@ -136,10 +137,12 @@
           <p class="sub" id="gprov-sub"></p>
           <div id="gprov-chart"></div>
         </div>
-        <div class="card" id="mrank-card">
-          <h2 id="mrank-title">Province rankings</h2>
-          <p class="sub" id="mrank-sub"></p>
-          <div class="mrank-scroll" role="region" aria-labelledby="mrank-title" tabindex="0"><ol class="mrank" id="mrank"></ol></div>
+        <div class="card" id="region-card">
+          <h2>Which region emits when</h2>
+          <p class="sub" id="region-sub"></p>
+          <div id="region-chart"></div>
+          <div class="region-key" id="region-key"></div>
+          <p class="sub region-note">Regions: the four used in OAE rice statistics (North 17, Northeast 20, Central 26, South 14 provinces).</p>
         </div>
       </aside>
     </div>
@@ -166,6 +169,7 @@
 <script src="data/grid.js"></script>
 <script src="data/provinces.js"></script>
 <script src="data/official.js"></script>
+<script src="data/regions.js"></script>
 <script src="data/historical_outlines.js"></script>
 <script src="data/clipped_cells.js"></script>
 <script src="data/national_cells.js"></script>

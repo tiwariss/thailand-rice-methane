@@ -297,3 +297,17 @@ footer .tools[hidden] { display: none; }
 }
 #view-grid .topbar .annual-controls { display: block; }
 #view-grid .topbar .explore-tools { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: end; margin-top: 4px; }
+
+/* ===== s225: region chart ===== */
+#region-chart svg { display: block; }
+#region-chart svg text { font-size: 11px; fill: var(--ink); }
+#region-chart .tick line { stroke: #e6e6e6; }
+#region-chart .rbar:hover rect { filter: brightness(1.08); }
+.region-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.82rem; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.region-key .rk-item { display: inline-flex; align-items: center; gap: 5px; }
+.region-key .sw { width: 12px; height: 12px; display: inline-block; }
+.region-note { margin-top: 6px; }
+@media (min-width: 901px) {
+  #region-card { display: flex; flex-direction: column; min-height: 0; }
+  #region-chart { flex: 1; min-height: 230px; contain: size; }
+}
