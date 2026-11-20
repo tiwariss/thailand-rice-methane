@@ -499,6 +499,19 @@
       : `${p} / ${metricLabels[metric]} · ${year} · ${val(p, year) === null ? 'No data' : fmt(val(p, year), 2) + ' Gg CH₄ per year'}`);
     const byName = {};
     // 10 km detail inside the selected province (one reference period: 2022-24 rice area); light fill underneath so cells stand out
+    // s246: the 10 km detail switch sits on the map (top right, under the source credit) and shows only while a province is selected
+    const detailCtl = L.control({ position: 'topright' });
+    detailCtl.onAdd = function () {
+      const div = L.DomUtil.create('div', 'detail-switch'); L.DomEvent.disableClickPropagation(div);
+      div.innerHTML = '<label><input type="checkbox" id="detail-toggle" role="switch" checked><span class="knob" aria-hidden="true"></span><span class="lbl">10 km detail</span></label>';
+      div.hidden = true; return div;
+    };
+    detailCtl.addTo(map);
+    const showSwitch = (on) => {
+      detailCtl.getContainer().hidden = !on;
+      const hint = document.getElementById('prov-maphint');
+      if (hint) hint.textContent = on ? 'Use the switch on the map to show or hide the 10 km cells. Click the province again to go back.' : 'Click a province to zoom in and see its 10 km detail.';
+    };
     const detailBox = document.getElementById('detail-toggle');
     const detailOn = () => metric === 'total' && (!detailBox || detailBox.checked);
     // s201: the selected province's background is the 10 km scale's 0 colour, so cells with no rice read as 0, not as blank gaps
@@ -607,7 +620,7 @@
       const maxZoom = Math.max(map.getMinZoom(), map.getZoom() - 1);
       sel = null;
       selectionSource = null;
-      document.getElementById('clear-selection').hidden = true;
+      document.getElementById('clear-selection').hidden = true; showSwitch(false);
       if (hl) { map.removeLayer(hl); hl = null; }
       showDetail();
       geo.eachLayer((l) => {
@@ -628,7 +641,7 @@
       if (sel === province) { clearSelection(); return; }
       selectionSource = p;
       sel = province;
-      document.getElementById('clear-selection').hidden = false;
+      document.getElementById('clear-selection').hidden = false; showSwitch(true);
       updateOutline();
       geo.eachLayer((l) => l.setStyle({ fillColor: fillFor(l.feature.properties.province), fillOpacity: opFor(l.feature.properties.province) }));
       showDetail();
