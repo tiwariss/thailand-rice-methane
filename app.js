@@ -104,9 +104,8 @@
     const gridClear = document.getElementById('grid-clear');
     // s223: the selected province is redrawn from its cells cut along the province border (data/clipped_cells.js, the
     // same pieces as the annual 10 km detail), so no square spills over the outline; all whole cells fade underneath
+    // s224: drawn on the same canvas as the cells (added last, so on top). A separate canvas pane swallowed clicks once empty.
     const cut = L.layerGroup().addTo(map);
-    map.createPane('cut').style.zIndex = 420;
-    const cutRenderer = L.canvas({ pane: 'cut', padding: 0.3 });
     function fade() {
       layers.forEach((r) => r.setStyle({ fillOpacity: gsel ? 0.35 : 1 }));
       cut.clearLayers();
@@ -115,7 +114,7 @@
       (G.byprov[gsel] || []).forEach(([i]) => {
         const g = CC[i];
         if (!g) return;   // no piece = a sliver too small to keep (same rule as the annual 10 km detail)
-        const shp = L.polygon(toLL(g), { renderer: cutRenderer, pane: 'cut', stroke: false, fillOpacity: 1, fillColor: col(G.months[i][month - 1]) });
+        const shp = L.polygon(toLL(g), { renderer, stroke: false, fillOpacity: 1, fillColor: col(G.months[i][month - 1]) });
         shp.cellIndex = i;
         shp.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
         shp.on('mouseover', () => { hover = i; info(i); });
@@ -133,6 +132,7 @@
       if (!gsel) return;
       const bounds = hl ? hl.getLayers()[0].getBounds() : null, maxZoom = Math.max(map.getMinZoom(), map.getZoom() - 1);
       gsel = null;
+      const gs = document.getElementById('grid-search'); if (gs) gs.value = '';
       if (hl) { map.removeLayer(hl); hl = null; }
       if (gridClear) gridClear.hidden = true;
       fade(); provSeason(); peakMap(); info(hover);
@@ -143,6 +143,7 @@
       if (!PM[p]) return;
       if (gsel === p) { clearProv(); return; }
       gsel = p;
+      const gs = document.getElementById('grid-search'); if (gs) gs.value = p;
       if (gridClear) gridClear.hidden = false;
       if (hl) map.removeLayer(hl);
       const f = P.geo.features.find((ft) => ft.properties.province === p);
@@ -192,7 +193,7 @@
     function provSeason() {
       const box = document.getElementById('gprov-chart'), title = document.getElementById('gprov-title'), sub = document.getElementById('gprov-sub');
       if (!box) return;
-      if (!gsel) { title.textContent = 'One province by month'; sub.textContent = 'Select a province on the peak-month map, or a cell on the main map.'; box.replaceChildren(); return; }
+      if (!gsel) { title.textContent = 'One province by month'; sub.textContent = 'Click a province on the map, find it by name, or pick it from the ranking.'; box.replaceChildren(); return; }
       const m = PM[gsel], yr = d3.sum(m), pk = peakOf(gsel);
       title.textContent = gsel;
       sub.textContent = `Gg CH₄ per month · peak in ${MONTHS[pk - 1]} · ${fmt(yr, 1)} Gg per year (2022–24 rice area)`;
@@ -200,37 +201,70 @@
     }
     const PEAKS = [8, 9, 10, 11, 12, 1];   // months that are a provincial peak (Aug-Jan), coloured in season order
     const peakCol = d3.scaleOrdinal().domain(PEAKS).range(d3.quantize((t) => d3.interpolatePlasma(0.1 + t * 0.75), PEAKS.length));
-    function peakMap() {
-      const box = document.getElementById('peak-map'); if (!box) return;
-      box.replaceChildren();
-      const w = Math.max(240, box.clientWidth || 300), h = Math.max(220, Math.min(box.clientHeight || 300, 440, Math.round(w * 0.9))), mw = Math.min(w * 0.6, h * 0.62);
-      const proj = d3.geoMercator().fitExtent([[4, 4], [mw, h - 4]], P.geo), path = d3.geoPath(proj);
-      const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
-        .attr('aria-label', 'Map of each province coloured by its peak month of estimated rice methane');
-      svg.append('g').selectAll('path').data(P.geo.features).join('path').attr('d', path)
-        .attr('fill', (f) => { const pk = peakOf(f.properties.province); return pk ? (peakCol.domain().includes(pk) ? peakCol(pk) : NODATA) : NODATA; })
-        .attr('stroke', (f) => (f.properties.province === gsel ? ink : '#ffffff')).attr('stroke-width', (f) => (f.properties.province === gsel ? 2 : 0.5))
-        .style('cursor', 'pointer').on('click', (e, f) => selectProv(f.properties.province))
-        .append('title').text((f) => { const pk = peakOf(f.properties.province); return f.properties.province + (pk ? ': peak in ' + MONTHS[pk - 1] : ': no rice'); });
-      svg.select('g').selectAll('path').filter((f) => f.properties.province === gsel).raise();
+    // s224: peak month is a view of the main map (switch above it), not a second map in the sidebar
+    map.createPane('peak').style.zIndex = 430;
+    let mode = 'month';
+    const peakLayer = L.geoJSON(P.geo, {
+      pane: 'peak',
+      style: (f) => { const pk = peakOf(f.properties.province); return { color: '#ffffff', weight: 0.6, fillOpacity: 1, fillColor: pk ? peakCol(pk) : NODATA }; },
+      onEachFeature: (f, l) => {
+        const p = f.properties.province;
+        l.bindTooltip(() => { const pk = peakOf(p); return `${p} · peak in ${pk ? MONTHS[pk - 1] : 'no rice'} · ${MONTHS[month - 1]}: ${fmt(PM[p] ? PM[p][month - 1] : null, 2)} Gg CH₄`; },
+          { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
+        l.on('click', () => selectProv(p));
+      },
+    });
+    const peakLegend = L.control({ position: 'bottomright' });
+    peakLegend.onAdd = function () {
+      const div = L.DomUtil.create('div', 'legend'); L.DomEvent.disableClickPropagation(div);
+      const t = document.createElement('div'); t.className = 'lt'; t.textContent = 'Peak month'; div.append(t);
+      const u = document.createElement('div'); u.className = 'lu'; u.textContent = 'Month with the most estimated CH₄ (number of provinces)'; div.append(u);
       const counts = d3.rollup(Object.keys(PM), (v) => v.length, peakOf);
-      const lg = svg.append('g').attr('transform', `translate(${mw + 24},${h * 0.2})`);
-      lg.append('text').attr('y', -8).attr('font-weight', 700).text('Peak month');
-      PEAKS.forEach((mo, k) => {
-        const g = lg.append('g').attr('transform', `translate(0,${k * 22})`);
-        g.append('rect').attr('width', 14).attr('height', 14).attr('fill', peakCol(mo));
-        g.append('text').attr('x', 20).attr('y', 11).text(`${MONTHS[mo - 1].slice(0, 3)} (${counts.get(mo) || 0})`);
+      PEAKS.forEach((mo) => {
+        const r = document.createElement('div'); r.className = 'nd';
+        const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = peakCol(mo); sw.style.borderColor = peakCol(mo);
+        r.append(sw, document.createTextNode(`${MONTHS[mo - 1]} (${counts.get(mo) || 0})`)); div.append(r);
       });
-      lg.append('text').attr('y', PEAKS.length * 22 + 10).attr('fill', '#666').text('(number of provinces)');
+      return div;
+    };
+    function setMode(m) {
+      mode = m;
+      document.querySelectorAll('#grid-mode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+      if (m === 'peak') { peakLayer.addTo(map); peakLegend.addTo(map); } else { map.removeLayer(peakLayer); peakLegend.remove(); }
+      document.getElementById('grid-mode-note').textContent = m === 'peak'
+        ? 'Each province coloured by its peak month (MODIS planting dates, May 2022 – May 2023). The month slider still moves the charts.'
+        : 'Tonnes of CH₄ in each 0.1° cell in the selected month.';
+      if (APP.writeHash) APP.writeHash();
+    }
+    document.querySelectorAll('#grid-mode button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+    // s224: provinces ranked for the selected month (idea taken from the annual ranking); click a row to select
+    function peakMap() {
+      const ol = document.getElementById('mrank'); if (!ol) return;
+      const list = Object.keys(PM).map((p) => ({ p, v: PM[p][month - 1] })).filter((d) => d.v > 0).sort((a, b) => b.v - a.v);
+      const vmax = list.length ? list[0].v : 1;
+      document.getElementById('mrank-title').textContent = `Province rankings, ${MONTHS[month - 1]}`;
+      document.getElementById('mrank-sub').textContent = `Gg CH₄ in ${MONTHS[month - 1]} (reference period). Scroll to see all ${list.length} provinces.`;
+      ol.replaceChildren(...list.map((d, k) => {
+        const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button';
+        b.setAttribute('aria-current', String(d.p === gsel)); b.dataset.province = d.p;
+        const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = k + 1;
+        const nm = document.createElement('span'); nm.className = 'nm';
+        const nt = document.createElement('span'); nt.className = 'nmt'; nt.textContent = d.p;
+        const bar = document.createElement('span'); bar.className = 'bar'; bar.style.width = (d.v / vmax * 100) + '%'; nm.append(nt, bar);
+        const vl = document.createElement('span'); vl.className = 'vl'; vl.textContent = fmt(d.v, 2) + ' Gg';
+        const pk = document.createElement('span'); pk.className = 'pk'; pk.title = 'Peak month'; pk.textContent = MONTHS[peakOf(d.p) - 1].slice(0, 3);
+        pk.style.borderColor = peakCol(peakOf(d.p));
+        b.append(rk, nm, vl, pk); b.addEventListener('click', () => selectProv(d.p)); li.append(b); return li;
+      }));
     }
     function seasonChart() {
       const card = document.getElementById('season-chart'); if (!card) return;
       bars(card, NAT, 92, 'Thailand estimated rice methane', 0);
       provSeason();
     }
-    window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) { seasonChart(); peakMap(); } });
+    window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) seasonChart(); });
     APP.peakMap = peakMap;
-    APP.gridProv = { series: PM, peak: peakOf, select: selectProv, selected: () => gsel };
+    APP.gridProv = { series: PM, peak: peakOf, select: selectProv, selected: () => gsel, setMode, mode: () => mode };
     APP.seasonChart = seasonChart;
     function setMonth(m) {
       month = m;
@@ -241,7 +275,7 @@
       if (typeof cut !== 'undefined') cut.eachLayer((r) => r.setStyle({ fillColor: col(G.months[r.cellIndex][m - 1]) }));
       layers.forEach((r) => { if (r.isTooltipOpen()) r.setTooltipContent(tipText(r.cellIndex)); });
       info(hover);
-      seasonChart();
+      seasonChart(); peakMap();
       if (APP.writeHash) APP.writeHash();
     }
     const ticks = document.getElementById('grid-ticks');
@@ -259,8 +293,18 @@
       colour: col, value: (i, m) => G.months[i][m - 1], layer: (i) => layers[i], tipText,
       stop: gpl.stop, start: gpl.start, playing: gpl.playing, selected: () => gsel, selectProv, clear: clearProv };
     if (gridClear) gridClear.addEventListener('click', clearProv);
+    // s224: province search, as on the annual map (same province list)
+    const gform = document.getElementById('grid-search-form');
+    if (gform) gform.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('grid-search').value.trim().toLowerCase(), msg = document.getElementById('grid-search-message');
+      const hit = Object.keys(PM).find((p) => p.toLowerCase() === q) || Object.keys(PM).find((p) => p.toLowerCase().startsWith(q) && q);
+      if (!hit) { msg.textContent = 'No province with that name.'; return; }
+      msg.textContent = ''; document.getElementById('grid-search').value = hit;
+      if (gsel !== hit) selectProv(hit);
+    });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && gsel && !document.getElementById('view-grid').hidden) clearProv(); });
-    setMonth(10);
+    setMode('month'); setMonth(10);
   })();
 
   // ================= annual provinces (main view)

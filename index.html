@@ -84,8 +84,15 @@
           <div class="period">
             <div class="period-main" id="grid-period">October</div>
             <div class="period-total" id="grid-total" aria-live="polite"></div>
-            <button class="tool" id="grid-clear" hidden>Clear selection</button>
           </div>
+        </div>
+        <div class="explore-tools">
+          <form id="grid-search-form">
+            <label for="grid-search">Find a province</label>
+            <div class="search-row"><input id="grid-search" list="province-options" placeholder="Type a province name" autocomplete="off"><button class="tool" type="submit">Go</button></div>
+            <span id="grid-search-message" role="status"></span>
+          </form>
+          <button class="tool" id="grid-clear" hidden>Clear selection</button>
         </div>
       </div>
       <section class="card" id="season-card" aria-labelledby="season-title">
@@ -96,6 +103,13 @@
     </div>
     <div class="provgrid">
       <div class="mapcol">
+        <div class="maptools">
+          <div class="map-mode" id="grid-mode" role="group" aria-label="Map shows">
+            <button type="button" class="tool" data-mode="month" aria-pressed="true">Methane this month</button>
+            <button type="button" class="tool" data-mode="peak" aria-pressed="false">Peak month</button>
+          </div>
+          <span class="sub" id="grid-mode-note"></span>
+        </div>
         <div class="mapwrap"><div id="map-grid" class="map" aria-label="Map of estimated methane allocation on 0.1 degree cells"></div></div>
         <p class="sub" id="grid-ref"></p>
         <div class="controls">
@@ -122,10 +136,10 @@
           <p class="sub" id="gprov-sub"></p>
           <div id="gprov-chart"></div>
         </div>
-        <div class="card" id="peak-card">
-          <h2>Peak month by province</h2>
-          <p class="sub">Month with the most estimated methane (MODIS planting dates, May 2022 – May 2023). Select a province to see its months.</p>
-          <div id="peak-map"></div>
+        <div class="card" id="mrank-card">
+          <h2 id="mrank-title">Province rankings</h2>
+          <p class="sub" id="mrank-sub"></p>
+          <div class="mrank-scroll" role="region" aria-labelledby="mrank-title" tabindex="0"><ol class="mrank" id="mrank"></ol></div>
         </div>
       </aside>
     </div>

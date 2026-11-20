@@ -271,3 +271,29 @@ footer .tools[hidden] { display: none; }
 .leaflet-container:focus:not(:focus-visible) { outline: none; }   /* s220: no black box round the map after a mouse click */
 #map-grid:focus, #map-prov:focus { outline: none; }
 #grid-clear[hidden] { display: none; } #grid-clear { justify-self: start; grid-column: 1 / -1; width: max-content; }
+
+/* ===== s224: monthly view: search, map-mode switch, monthly province ranking ===== */
+#view-grid .annual-controls { display: block; }
+#view-grid .explore-tools { margin: 4px 0 0; align-items: end; }
+#grid-search-message { font-size: 0.85rem; }
+.map-mode { display: inline-flex; gap: 0; }
+.map-mode .tool { border-radius: 0; }
+.map-mode .tool:first-child { border-radius: 3px 0 0 3px; }
+.map-mode .tool:last-child { border-radius: 0 3px 3px 0; border-left: none; }
+#grid-mode-note { margin: 0; }
+.mrank { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.86rem; }
+.mrank button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1.8em minmax(0, 1fr) 5.4em 2.8em; gap: 6px; align-items: center; width: 100%; padding: 3px 4px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.mrank button:hover, .mrank button:focus-visible { background: #f2f2f2; }
+.mrank button[aria-current="true"] { outline: 2px solid var(--ink); outline-offset: -2px; }
+.mrank .rk { color: var(--muted); }
+.mrank .nmt { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrank .bar { display: block; height: 4px; margin-top: 1px; background: #c9c9c9; }
+.mrank .vl { text-align: right; }
+.mrank .pk { font-size: 0.75rem; text-align: center; border-bottom: 3px solid; color: var(--muted); }
+.mrank-scroll { overflow-y: auto; max-height: 420px; scrollbar-gutter: stable; }
+@media (min-width: 901px) {
+  #mrank-card { display: flex; flex-direction: column; min-height: 0; }
+  #mrank-card .mrank-scroll { flex: 1; contain: size; min-height: 200px; max-height: none; }
+}
+#view-grid .topbar .annual-controls { display: block; }
+#view-grid .topbar .explore-tools { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: end; margin-top: 4px; }
