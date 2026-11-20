@@ -353,3 +353,8 @@ footer .tools[hidden] { display: none; }
   #grid-mode-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 }
 #view-prov .topbar, #view-grid .topbar { margin-bottom: 5px; }
+
+/* ===== s230: annual view: the ranking box shows 10 whole rows (the list has a 4 px top margin) ===== */
+.rank-scroll .rank { margin-top: 0; }   /* box stays exactly 10 rows; the 4 px list margin had cut the last row */
+.legend .ltot { margin: 4px 0 0; font-weight: 700; color: var(--ink); }   /* s230: 10 km grid total inside the legend */
+@media (min-width: 901px) { #side:has(#chart:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); align-content: stretch; } }   /* s230: province card reaches the bottom edge */

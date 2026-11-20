@@ -453,14 +453,14 @@
           const t = document.createElement('div'); t.className = 'lt'; t.textContent = '10 km detail';
           const n = document.createElement('div'); n.className = 'lu ln'; n.textContent = 'Rice area 2022–24 (does not change with the year)';
           const u = document.createElement('div'); u.className = 'lu'; u.textContent = 't CH₄ per cell per year';
-          div.append(t, n, u); legendBar(div, G.vmax_piece, 0, 250);
+          const tot = document.createElement('div'); tot.className = 'lu ltot'; tot.textContent = `Grid total: ${fmt(dSum / 1000, 1)} Gg CH₄ per year (can differ from the yearly value)`;   // s230: was a line under the map
+          div.append(t, n, u); legendBar(div, G.vmax_piece, 0, 250); div.append(tot);
           return div;
         };
         dLegend.addTo(map);
       }
       map.getContainer().classList.toggle('detail-on', dCount > 0);   // s215: lets phones hide the province legend while the 10 km legend shows
-      const note = document.getElementById('detail-note');
-      if (note) note.textContent = dCount ? `10 km grid for ${selectedLabel()}: ${fmt(dSum / 1000, 1)} Gg CH₄ per year in total (2022–24 rice area, so it can differ from the yearly province value). Hover over a cell for its value.` : '';
+
     }
     let hl = null;
     function updateOutline() {
@@ -676,7 +676,7 @@
       const s = P.years.map((y, i) => ({ y, v: P.series[sel] ? P.series[sel][i] : null }));
       const t = document.createElement('p'); t.className = 'ttl'; t.textContent = selectedLabel();
       card.append(t);
-      const w = Math.max(260, card.clientWidth), h = 200, m = { t: 8, r: 10, b: 24, l: 40 };
+      const w = Math.max(260, card.clientWidth), h = 150, m = { t: 8, r: 10, b: 24, l: 40 };   // s230: smaller so selecting does not make the page taller
       const x = d3.scaleLinear().domain([Y0, last]).range([m.l, w - m.r]);
       // rank among all provinces with data, each year (single-year values, 1 = highest)
       const rk = P.years.map((y) => ({ y, r: rankIn(sel, y) }));
@@ -685,7 +685,7 @@
       const rs = document.createElement('p'); rs.className = 'sub'; rs.id = 'chart-rank';
       rs.textContent = `Rank among provinces · ${year}: ${curR === null ? 'No data' : curR + ' of ' + n}` + (r3 && rankWindow(year) > 1 ? ` · ${rankBasis(year)} rank: ${r3}` : '');
       card.append(rs);
-      const h2 = 120, mr = { t: 8, r: 10, b: 22, l: 40 };
+      const h2 = 84, mr = { t: 8, r: 10, b: 22, l: 40 };
       const rmax = Math.max(10, d3.max(rk, (d) => d.r) || 10);
       const ry = d3.scaleLinear().domain([1, rmax]).range([mr.t, h2 - mr.b]);   // rank 1 at the top
       const s2 = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h2}`).attr('role', 'img').attr('aria-label', `Rank of ${sel} among provinces, 1988 to 2024`);
