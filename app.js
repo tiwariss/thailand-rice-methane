@@ -49,7 +49,59 @@
     [['base', 250], ['lines', 450], ['hl', 460]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
     map.getPane('lines').style.pointerEvents = 'none'; map.getPane('hl').style.pointerEvents = 'none';
     L.geoJSON(B, { pane: 'base', interactive: false, style: { color: '#ffffff', weight: 0.7, fillColor: LAND, fillOpacity: 1 } }).addTo(map);
+    // s237/s238: standard map furniture: scale bar and source credit. Only Thai places are named (user: focus on Thailand):
+    // province names from zoom 7.5, small, and where two names would overlap only the province with more methane is kept.
+    L.control.scale({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 120 }).addTo(map);
+    L.control.attribution({ position: 'topright', prefix: false })
+      .addAttribution('Boundaries: Natural Earth · Rice area: OAE · Emission factors: BTR1 · Estimates: this study').addTo(map);
+    map.createPane('labels').style.zIndex = 470; map.getPane('labels').style.pointerEvents = 'none';
+    const lastYear = P.years.length - 1;
+    const names = P.geo.features.map((f) => {
+      const [lo, la] = visualCentre(f), p = f.properties.province;
+      const m = L.marker([la, lo], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: 'maplabel prov', html: p, iconSize: null }) });
+      m.rank = (P.series[p] && P.series[p][lastYear]) || 0;   // priority when names collide
+      return m;
+    }).sort((a, b) => b.rank - a.rank);
+    const nameLayer = L.layerGroup(names);
+    function showNames() {
+      if (map.getZoom() < 7.5) { nameLayer.remove(); return; }
+      nameLayer.addTo(map);
+      const kept = [];
+      names.forEach((m) => {
+        const el = m.getElement(); if (!el) return;
+        el.style.visibility = 'visible';
+        const r = el.getBoundingClientRect(), pad = 3;
+        const hit = kept.some((k) => !(r.right + pad < k.left || r.left - pad > k.right || r.bottom + pad < k.top || r.top - pad > k.bottom));
+        if (hit) el.style.visibility = 'hidden'; else kept.push(r);
+      });
+    }
+    map.on('zoomend moveend', showNames); showNames();
     return map;
+  }
+  // s239: visual centre of a province = the point inside it furthest from its border (a grid search, refined twice), so the
+  // name sits in the middle of the shape even for long or curved provinces (a centroid can fall near an edge or outside)
+  const _vc = new Map();
+  function visualCentre(f) {
+    const key = f.properties.province; if (_vc.has(key)) return _vc.get(key);
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    const rings = polys.flat(), ky = Math.cos(d3.geoCentroid(f)[1] * Math.PI / 180);   // x scaled by cos(lat) for distances
+    const segDist = (x, y) => { let best = Infinity;
+      rings.forEach((r) => { for (let k = 0, j = r.length - 1; k < r.length; j = k++) {
+        const ax = r[j][0] * ky, ay = r[j][1], bx = r[k][0] * ky, by = r[k][1], dx = bx - ax, dy = by - ay;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+        const ex = ax + t * dx - x, ey = ay + t * dy - y; best = Math.min(best, ex * ex + ey * ey); } });
+      return best; };
+    let [[x0, y0], [x1, y1]] = d3.geoBounds(f), best = d3.geoCentroid(f), bestD = -1;
+    for (let pass = 0; pass < 3; pass++) {
+      const n = 14, sx = (x1 - x0) / n, sy = (y1 - y0) / n;
+      for (let a = 0; a <= n; a++) for (let b = 0; b <= n; b++) {
+        const x = x0 + a * sx, y = y0 + b * sy;
+        if (!d3.geoContains(f, [x, y])) continue;
+        const d = segDist(x * ky, y); if (d > bestD) { bestD = d; best = [x, y]; }
+      }
+      [x0, x1, y0, y1] = [best[0] - sx * 2, best[0] + sx * 2, best[1] - sy * 2, best[1] + sy * 2];
+    }
+    _vc.set(key, best); return best;
   }
   function ensureFit(map) { map.invalidateSize(); if (!map._fitted && map.getSize().x > 0) { map.fitBounds(TH_BOUNDS, { animate: false }); map._fitted = true; } }   // s223: instant, so a zoom from a shared link is not overridden
   function player(btn, step, intervalKey) {
@@ -91,8 +143,8 @@
       const r = cellShape(i, { renderer, stroke: false, fillOpacity: 1, fillColor: col(G.months[i][0]) });
       r.cellIndex = i;
       r.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
-      r.on('mouseover', () => { hover = i; info(i); });
-      r.on('mouseout', () => { hover = null; info(null); });
+      r.on('mouseover', () => { hover = i; info(i); hoverProv(i); });
+      r.on('mouseout', () => { hover = null; info(null); hoverProv(null); });
       r.on('click', () => select(i));
       return r.outside ? r : r.addTo(map);
     });
@@ -106,19 +158,42 @@
     // s235 (user): light grey lines. Cell lines are never drawn on the whole-country map; they appear automatically inside the
     // selected province (on its cut cells). The checkbox now only makes the province borders stronger.
     const LINE = '#bdbdbd';
+    // share of a province's allocated methane sitting in bright cells (CIELAB L > 62) in the current view
+    // s239: share of the province's methane in bright cells (0-1); the border colour blends with it instead of switching
+    const brightShare = (p) => { const list = G.byprov[p] || []; let b = 0, t = 0;
+      list.forEach(([i, w]) => { t += w; if (d3.lab(cellColour(i)).l > 62) b += w; }); return t > 0 ? b / t : 0; };
+    const borderMix = d3.interpolateRgb(LINE, '#3a3a3a'), borderMixThin = d3.interpolateRgb('#ffffff', '#1a1a1a');
+    const ease = (v) => Math.max(0, Math.min(1, (v - 0.25) / 0.5));   // 0 below 25% bright, 1 above 75%, smooth in between
     // s236: cell lines follow the cell: dark on bright (yellow) cells, light grey on dark cells; thicker as you zoom in
     const cellLine = (fill) => { const z = map.getZoom(), bright = fill && d3.lab(fill).l > 62;
       return { stroke: true, color: bright ? 'rgba(0,0,0,0.55)' : LINE, weight: z >= 10 ? 1.4 : z >= 9 ? 1.1 : z >= 8 ? 0.9 : 0.6, opacity: 0.95 }; };
     function lineStyle() {
       const z = map.getZoom();
       const pw = gridLines ? (z >= 8 ? 1.8 : z >= 7 ? 1.4 : 1.0) : 0.4;
-      provLines.setStyle(gridLines ? { color: LINE, weight: pw, opacity: z >= 7 ? 0.95 : 0.85 } : { color: '#ffffff', weight: pw, opacity: 0.35 });
+      // s237: a province's border is dark when most of its cells are bright (yellow), light grey otherwise
+      provLines.eachLayer((l) => {
+        const v = ease(brightShare(l.feature.properties.province));
+        l.setStyle(gridLines ? { color: borderMix(v), weight: pw, opacity: z >= 7 ? 0.95 : 0.85 }
+          : { color: borderMixThin(v), weight: pw, opacity: 0.35 - 0.05 * v });
+      });
       provCasing.setStyle({ weight: pw + (gridLines ? 1.6 : 0.9), opacity: gridLines ? 0.35 : 0.18 });
       cut.eachLayer((r) => r.setStyle(cellLine(r.options.fillColor)));
     }
     map.on('zoomend', lineStyle);
     // s220: a click selects the whole province (outline on the map + its monthly chart); hover still reads one cell
     let hl = null;
+    // s238: hover outline: the province under the mouse gets a thin white outline (skipped for the selected province)
+    let hov = null, hovName = null;
+    function hoverProv(i) {
+      const p = i === null || !cellProv[i] ? null : cellProv[i].p;
+      if (p === hovName) return;
+      if (hov) { map.removeLayer(hov); hov = null; }
+      hovName = p;
+      if (!p || p === gsel || mode === 'peak') return;
+      const f = P.geo.features.find((ft) => ft.properties.province === p);
+      hov = L.layerGroup([L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: '#ffffff', weight: 3, opacity: 0.85, fill: false } }),
+        L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: ink, weight: 1.1, opacity: 0.9, fill: false } })]).addTo(map);   // thinner version of the selection outline
+    }
     const selectedInfo = document.getElementById('grid-selected');
     function info(i) {
       document.getElementById('grid-info').textContent = i === null
@@ -217,6 +292,7 @@
     function recolour() {
       layers.forEach((r, i) => r.setStyle({ fillColor: cellColour(i) }));
       cut.eachLayer((r) => { const c = cellColour(r.cellIndex); r.setStyle({ fillColor: c, ...cellLine(c) }); });
+      lineStyle();   // s237: border colours follow the month
     }
     const peakLayer = L.geoJSON(P.geo, {
       pane: 'peak',
