@@ -148,8 +148,8 @@
       return whole ? `${p} · ${fmt(d3.sum(PM[p]), 1)} Gg CH₄ in the whole year` : `${p} · ${fmt(PM[p][month - 1], 2)} Gg CH₄ in ${MONTHS[month - 1]}`; };
     const cellTip = (i) => (whole ? `This cell: ${fmt(YEAR[i], 1)} t CH₄ in the whole year` : `This cell: ${fmt(G.months[i][month - 1], 2)} t CH₄ in ${MONTHS[month - 1]}`);
     const tipText = (i) => { const [x, y] = centre(i); return whole
-      ? `Cell ${x.toFixed(2)}°E, ${y.toFixed(2)}°N · whole year (2022–24 rice area) · ${fmt(YEAR[i], 1)} t CH₄`
-      : `Cell ${x.toFixed(2)}°E, ${y.toFixed(2)}°N · ${MONTHS[month - 1]} (reference period) · ${fmt(G.months[i][month - 1], 2)} t CH₄`; };
+      ? `Cell at ${x.toFixed(2)}°E, ${y.toFixed(2)}°N: ${fmt(YEAR[i], 1)} t CH₄ in the whole year`
+      : `Cell at ${x.toFixed(2)}°E, ${y.toFixed(2)}°N: ${fmt(G.months[i][month - 1], 2)} t CH₄ in ${MONTHS[month - 1]}`; };
     // s203: Thailand painted in the scale's 0 colour under the cells (no-rice land reads as 0), and cells that cross the
     // national outline cut along it (data/national_cells.js; 0 = wholly outside, not drawn)
     const NC = window.DATA_NATIONAL_CELLS || {};
@@ -211,11 +211,11 @@
     const selectedInfo = document.getElementById('grid-selected');
     function info(i) {
       document.getElementById('grid-info').textContent = i === null
-        ? 'Hover to read a cell. Click to select its province.'
+        ? 'Point at a cell to see its value. Click to select its province.'
         : tipText(i);
       selectedInfo.hidden = !gsel;
-      if (gsel) selectedInfo.textContent = whole ? `Selected: ${gsel} · whole year (2022–24 rice area) · ${fmt(d3.sum(PM[gsel]), 1)} Gg CH₄`
-        : `Selected: ${gsel} · ${MONTHS[month - 1]} (reference period) · ${fmt(PM[gsel][month - 1], 2)} Gg CH₄`;
+      if (gsel) selectedInfo.textContent = whole ? `Selected: ${gsel}, ${fmt(d3.sum(PM[gsel]), 1)} Gg CH₄ in the whole year`
+        : `Selected: ${gsel}, ${fmt(PM[gsel][month - 1], 2)} Gg CH₄ in ${MONTHS[month - 1]}`;
     }
     // s221: same behaviour as the annual map: select zooms to the province and fades the rest; selecting it again,
     // the Clear button or Escape clears and zooms back out one step
@@ -280,14 +280,14 @@
     function drawLegend() {
       gridLegend.replaceChildren();
       const h = document.createElement('h2'), u = document.createElement('p'), n = document.createElement('p'); u.className = 'sub'; n.className = 'sub';
-      if (whole) { h.textContent = 'Estimated methane, whole year'; u.textContent = 't CH₄ per 0.1° cell per year'; n.textContent = '2022–24 rice area; same scale as the annual map’s 10 km detail.'; }
-      else { h.textContent = 'Estimated methane allocation'; u.textContent = 't CH₄ per 0.1° cell per month'; n.textContent = 'Seasonal timing applied by province.'; }
+      if (whole) { h.textContent = 'Methane per cell, whole year'; u.textContent = 'Tonnes of CH₄ per 10 km cell per year'; n.textContent = 'Same colour scale as the 10 km detail on the annual map.'; }
+      else { h.textContent = 'Methane per cell'; u.textContent = 'Tonnes of CH₄ per 10 km cell this month'; n.textContent = 'Timing follows each province’s planting dates.'; }
       gridLegend.append(h, u, n);
       legendBar(gridLegend, whole ? G.vmax_piece : G.vmax, 1, whole ? 250 : 190);
       noDataSwatch(gridLegend);
     }
     drawLegend();
-    document.getElementById('grid-ref').textContent = G.period;
+    document.getElementById('grid-ref').textContent = 'Typical year: 2022–24 rice area (OAE) with May 2022 – May 2023 planting dates (MODIS).';   // s248: plainer than G.period
     const NAT = d3.range(12).map((k) => d3.sum(G.months, (r) => r[k]) / 1000);
     // s219: province monthly series = sum over the province's cells of (cell month / cell year) x the province's allocated t
     const PM = {}, cellProv = {};
@@ -324,7 +324,7 @@
     peakLegend.onAdd = function () {
       const div = L.DomUtil.create('div', 'legend'); L.DomEvent.disableClickPropagation(div);
       const t = document.createElement('div'); t.className = 'lt'; t.textContent = 'Peak month'; div.append(t);
-      const u = document.createElement('div'); u.className = 'lu'; u.textContent = 'Month with the most estimated CH₄ (number of provinces)'; div.append(u);
+      const u = document.createElement('div'); u.className = 'lu'; u.textContent = 'The month each province emits most (number of provinces)'; div.append(u);
       const counts = d3.rollup(Object.keys(PM), (v) => v.length, peakOf);
       PEAKS.forEach((mo) => {
         const r = document.createElement('div'); r.className = 'nd';
@@ -339,8 +339,8 @@
       if (m === 'peak') { peakLayer.addTo(map); peakLegend.addTo(map); } else { map.removeLayer(peakLayer); peakLegend.remove(); }
       recolour(); drawLegend(); info(hover);
       document.getElementById('grid-mode-note').textContent = m === 'peak'
-        ? 'Each province coloured by its peak month (MODIS planting dates, May 2022 – May 2023). The month slider still moves the charts.'
-        : 'Tonnes of CH₄ in each 0.1° cell in the selected month, or over the whole year (last step of the slider).';
+        ? 'Each province is coloured by the month it emits most. The slider still updates the chart.'
+        : 'Move the slider to the end for the whole year.';
       if (APP.writeHash) APP.writeHash();
     }
     document.getElementById('grid-view-mode').addEventListener('change', (e) => setMode(e.target.value));
@@ -364,12 +364,12 @@
       const all = d3.range(12).map((k) => d3.sum(REGIONS, (r) => RM[r][k]));
       if (gsel) {
         const pk = peakOf(gsel);
-        title.textContent = `${gsel} by month`;
-        sub.textContent = `${REG[gsel] || ''} region · Gg CH₄ per month · peak in ${MONTHS[pk - 1]} · ${fmt(d3.sum(PM[gsel]), 1)} Gg per year (2022–24 rice area)`;
+        title.textContent = `${gsel}, month by month`;
+        sub.textContent = `${REG[gsel] || ''} region · peaks in ${MONTHS[pk - 1]} · ${fmt(d3.sum(PM[gsel]), 1)} Gg CH₄ a year`;
       } else {
-        title.textContent = rsel ? `${rsel} by month` : 'When the methane is emitted';
-        sub.textContent = rsel ? `Gg CH₄ per month, ${rsel} only. Select it again in the key to show all regions.`
-          : 'Thailand, Gg CH₄ per month, stacked by region. Select a region to show it alone, a bar to change the month.';
+        title.textContent = rsel ? `${rsel}, month by month` : 'When the methane is emitted';
+        sub.textContent = rsel ? `Gg CH₄ per month in the ${rsel} region. Click ${rsel} again to see all regions.`
+          : 'Gg CH₄ per month across Thailand, split by region. Click a region to see it on its own, or a bar to jump to that month.';
       }
       key.replaceChildren();
       if (gsel) {
@@ -378,7 +378,7 @@
         const it = document.createElement('span'); it.className = 'rk-item';
         const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = RCOL[REG[gsel]] || '#888';
         it.append(sw, document.createTextNode(whole ? `Whole year: ${fmt(d3.sum(PM[gsel]), 1)} Gg`
-          : `${MONTHS[month - 1]}: ${fmt(PM[gsel][month - 1], 2)} Gg (${fmt(PM[gsel][month - 1] / d3.sum(PM[gsel]) * 100, 0)}% of its year)`)); key.append(it);
+          : `${MONTHS[month - 1]}: ${fmt(PM[gsel][month - 1], 2)} Gg, ${fmt(PM[gsel][month - 1] / d3.sum(PM[gsel]) * 100, 0)}% of its year`)); key.append(it);
       } else {
         REGIONS.forEach((r) => {
           const v = whole ? d3.sum(RM[r]) : RM[r][month - 1], b = document.createElement('button'); b.type = 'button'; b.className = 'rk-item';
@@ -439,8 +439,8 @@
       document.getElementById('grid-slider').value = m;
       document.getElementById('view-grid').classList.toggle('whole-year', whole);
       document.getElementById('grid-period').textContent = whole ? 'Whole year' : MONTHS[m - 1];
-      document.getElementById('grid-total').textContent = whole ? `Thailand estimate: ${fmt(d3.sum(NAT), 1)} Gg CH₄ per year`
-        : `Thailand estimate: ${fmt(NAT[m - 1], 1)} Gg CH₄`;
+      document.getElementById('grid-total').textContent = whole ? `Thailand: ${fmt(d3.sum(NAT), 1)} Gg CH₄ in the whole year`
+        : `Thailand: ${fmt(NAT[m - 1], 1)} Gg CH₄ this month`;
       recolour();
       if (wasWhole !== whole) drawLegend();
       layers.forEach((r) => { if (r.isTooltipOpen()) r.setTooltipContent(provTip(r.cellIndex)); });
@@ -471,7 +471,7 @@
       e.preventDefault();
       const q = document.getElementById('grid-search').value.trim().toLowerCase(), msg = document.getElementById('grid-search-message');
       const hit = Object.keys(PM).find((p) => p.toLowerCase() === q) || Object.keys(PM).find((p) => p.toLowerCase().startsWith(q) && q);
-      if (!hit) { msg.textContent = 'No province with that name.'; return; }
+      if (!hit) { msg.textContent = 'No province by that name. Try one of the suggestions.'; return; }
       msg.textContent = ''; document.getElementById('grid-search').value = hit;
       if (gsel !== hit) selectProv(hit);
     });
@@ -586,9 +586,9 @@
         dLegend.onAdd = function () {
           const div = L.DomUtil.create('div', 'legend'); L.DomEvent.disableClickPropagation(div);
           const t = document.createElement('div'); t.className = 'lt'; t.textContent = '10 km detail';
-          const n = document.createElement('div'); n.className = 'lu ln'; n.textContent = 'Rice area 2022–24 (does not change with the year)';
-          const u = document.createElement('div'); u.className = 'lu'; u.textContent = 't CH₄ per cell per year';
-          const tot = document.createElement('div'); tot.className = 'lu ltot'; tot.textContent = `Grid total: ${fmt(dSum / 1000, 1)} Gg CH₄ per year (can differ from the yearly value)`;   // s230: was a line under the map
+          const n = document.createElement('div'); n.className = 'lu ln'; n.textContent = 'Based on 2022–24 rice area, so it stays the same across years';
+          const u = document.createElement('div'); u.className = 'lu'; u.textContent = 'Tonnes of CH₄ per cell per year';
+          const tot = document.createElement('div'); tot.className = 'lu ltot'; tot.textContent = `All cells: ${fmt(dSum / 1000, 1)} Gg CH₄ a year (can differ slightly from the yearly figure)`;   // s230: was a line under the map
           div.append(t, n, u); legendBar(div, G.vmax_piece, 0, 250); div.append(tot);
           return div;
         };
@@ -637,7 +637,7 @@
       card.replaceChildren();
       card.hidden = true;
       document.getElementById('chart-hint').hidden = false;
-      document.getElementById('prov-info').textContent = 'Hover or tap a province to read its value.';
+      document.getElementById('prov-info').textContent = 'Point at a province to see its value.';
       ranking(false);
       moveToBounds(nearbyBounds, { maxZoom });
       if (APP.writeHash) APP.writeHash();
@@ -666,14 +666,14 @@
       const el = document.getElementById('prov-national'); if (!el) return;
       const t = nationalTotal(); el.replaceChildren();
       // s205: the series is our calculation (each year's official OAE area x BTR1's 2022 factors and shares); only 2022 is the official level
-      const lab = document.createTextNode(`Thailand estimate (our calculation), ${metricLabels[metric].toLowerCase()}: `);
+      const lab = document.createTextNode(`Thailand, ${metricLabels[metric].toLowerCase()} (our estimate): `);
       const b = document.createElement('b'); b.textContent = `${fmt(t.sum, 1)} Gg CH₄`;
       el.append(lab, b);
       const grouped = splits.filter(merged).map((p) => `${p} with ${PARENT[p]}`);
       if (grouped.length) {
         const note = document.createElement('span');
         note.className = 'part';
-        note.textContent = ` (grouped: ${grouped.join('; ')})`;
+        note.textContent = ` (${grouped.map((g) => g.replace(' with ', ' counted with ')).join('; ')})`;
         el.append(note);
       }
     }
@@ -727,10 +727,10 @@
       const yr = Object.keys(P.series).map((p) => val(p, year)).filter((v) => v !== null);
       const nMissing = Object.keys(P.series).length - yr.length;
       const span = rankWindow(year) === 1 ? String(year) : `${rankStart(year)}–${String(year).slice(2)}`;
-      document.getElementById('rank-title').textContent = `${metricLabels[metric]}: province rankings, ${span}`;
-      document.getElementById('rank-total').textContent = `Ranking basis: ${rankBasis(year)} (Gg CH₄ per year). `
-        + (prev ? 'Arrows compare with the previous year’s list. ' : '')
-        + `All ${yr.length} provinces with data, ${year}: ${fmt(d3.sum(yr), 1)} Gg CH₄` + (nMissing ? ` (${nMissing} without a record)` : '') + '.' + (now.list.length > 10 ? ` Scroll to see all ${now.list.length} ranked provinces.` : '');
+      document.getElementById('rank-title').textContent = `${metricLabels[metric]} by province, ${span}`;
+      document.getElementById('rank-total').textContent = `Ranked by ${rankWindow(year) === 1 ? 'a single year' : 'the ' + rankBasis(year)} (Gg CH₄ per year). `   // s248: Thailand total no longer repeated here
+        + (prev ? 'Arrows show the change since the previous year. ' : '')
+        + (nMissing ? `${nMissing} provinces have no record for ${year}. ` : '') + (now.list.length > 10 ? `Scroll to see all ${now.list.length}.` : '');
       const ranked = now.list, vmax = ranked[0]?.v || 1;
       const focused = ol.contains(document.activeElement) ? document.activeElement : null;
       ol.style.height = ranked.length * ROW + 'px';
@@ -802,7 +802,7 @@
         .attr('fill', '#ffffff').attr('stroke', '#666666').attr('stroke-width', 1.1).append('title').text((d) => `${d.y} BTR1 official: ${fmt(d.v, 1)} Gg CH₄`);
       svg.append('circle').attr('id', 'nat-dot').attr('cx', x(year)).attr('cy', yy(cur.v)).attr('r', 4.5).attr('fill', d3.interpolateCividis(0.92)).attr('stroke', ink).attr('stroke-width', 1.2);
       const key = document.createElement('p'); key.className = 'sub';
-      key.textContent = 'Line: our estimate (OAE area × BTR1 2022 factors).' + (OFF.length ? ' Dots: BTR1 official, 2000–22.' : '') + ' Axis not from 0.';
+      key.textContent = 'Line: our estimate.' + (OFF.length ? ' Dots: official BTR1 totals, 2000–2022.' : '') + ' The axis does not start at zero.';
       card.append(key);
     }
     function chart() {
@@ -818,7 +818,7 @@
       const curR = rankIn(sel, year), n = Object.keys(P.series).filter((p) => val(p, year) !== null).length;
       const r3 = ranksOf(year).pos.get(sel);
       const rs = document.createElement('p'); rs.className = 'sub'; rs.id = 'chart-rank';
-      rs.textContent = `Rank among provinces · ${year}: ${curR === null ? 'No data' : curR + ' of ' + n}` + (r3 && rankWindow(year) > 1 ? ` · ${rankBasis(year)} rank: ${r3}` : '');
+      rs.textContent = `Rank in ${year}: ${curR === null ? 'no data' : curR + ' of ' + n}` + (r3 && rankWindow(year) > 1 ? ` (${rankBasis(year)}: ${r3})` : '');
       card.append(rs);
       const h2 = 120, mr = { t: 8, r: 10, b: 22, l: 40 };
       const rmax = Math.max(10, d3.max(rk, (d) => d.r) || 10);
@@ -860,9 +860,9 @@
       P.series = metric === 'total' ? totalSeries : P.components[metric];
       document.getElementById('emission-type').value = metric;
       document.getElementById('metric-note').textContent = metric === 'controlled'
-        ? 'Irrigated main-season plus dry-season rice. Use this view to screen where water-management feasibility could be assessed.'
-        : metric === 'rainfed' ? 'Rainfed classes plus deep-water rice, following the inventory grouping.'
-        : 'Total includes water-controlled and rainfed rice.';
+        ? 'Irrigated main-season rice plus dry-season rice: where better water management could be looked at.'
+        : metric === 'rainfed' ? 'Rainfed and deep-water rice, grouped as in the national inventory.'
+        : 'Total covers both water-controlled and rainfed rice.';
       if (detailBox) detailBox.disabled = metric !== 'total';
       map.removeControl(provinceLegend);
       provinceLegend = legend(map, metricLabels[metric], 'Gg CH4 per province per year', P.vmax, 1);

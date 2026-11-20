@@ -11,7 +11,7 @@
 <header class="hd">
   <div class="hd-title">
     <h1>Where and when Thailand’s rice methane is emitted</h1>
-    <p class="lede">Estimated rice methane (CH₄) by province and year, 1988–2024, and monthly estimates on a 0.1° grid.</p>
+    <p class="lede">Estimated rice methane (CH₄) for every province and year from 1988 to 2024, and month by month on a 10 km grid. Click a province to zoom in; press Play to watch the years or months change.</p>
   </div>
 </header>
 
@@ -26,7 +26,7 @@
           </div>
           <div class="map-views" role="group" aria-label="Map view">
             <button type="button" class="tool" id="show-prov" aria-pressed="true" aria-controls="view-prov"><strong>Annual map</strong><span>By province</span></button>
-            <button type="button" class="tool" id="show-grid" aria-pressed="false" aria-controls="view-grid"><strong>Monthly map</strong><span>Seasonal 0.1° grid</span></button>
+            <button type="button" class="tool" id="show-grid" aria-pressed="false" aria-controls="view-grid"><strong>Monthly map</strong><span>Month by month, 10 km</span></button>
           </div>
         </div>
         <div class="explore-tools">
@@ -35,15 +35,15 @@
             <div class="search-row"><input id="province-search" list="province-options" placeholder="Type a province name" autocomplete="off"><datalist id="province-options"></datalist><button class="tool" type="submit">Go</button></div>
             <span id="search-message" role="status"></span>
           </form>
-          <div><label for="emission-type">Show estimated emissions</label>
+          <div><label for="emission-type">Show</label>
             <select id="emission-type"><option value="total">Total rice methane</option><option value="controlled">Water-controlled rice</option><option value="rainfed">Rainfed rice</option></select>
           </div>
           <button class="tool" id="clear-selection" hidden>Clear selection</button>
-          <p class="sub" id="metric-note">Total includes water-controlled and rainfed rice.</p>
+          <p class="sub" id="metric-note">Total covers both water-controlled and rainfed rice.</p>
         </div>
       </div>
       <section class="card" id="nat-card" aria-labelledby="nat-title">
-        <h2 id="nat-title">Thailand’s annual emissions trend</h2>
+        <h2 id="nat-title">Thailand, year by year</h2>
         <div id="nat-chart"></div>
       </section>
     </div>
@@ -53,7 +53,7 @@
           <p class="sub maphint" id="prov-maphint">Click a province to zoom in and see its 10 km detail.</p>
         </div>
         <div class="mapwrap"><div id="map-prov" class="map" aria-label="Map of estimated rice methane by province"></div></div>
-        <div class="info" id="prov-info">Hover or tap a province to read its value.</div>
+        <div class="info" id="prov-info">Point at a province to see its value.</div>
         <div class="controls">
           <button class="play" id="prov-play" aria-pressed="false">▶ Play</button>
           <input type="range" id="prov-slider" min="1988" max="2024" step="1" value="2024" aria-label="Year">
@@ -69,7 +69,7 @@
           </div>
         </div>
         <div class="card sel" id="chart-card">
-          <p class="hint" id="chart-hint">Select a province on the map or in the ranking to see its rank and emissions trends here.</p>
+          <p class="hint" id="chart-hint">Pick a province on the map or in the list to see how it has changed over time.</p>
           <div id="chart" hidden></div>
         </div>
       </aside>
@@ -92,7 +92,7 @@
             <span id="grid-search-message" role="status"></span>
           </form>
           <div><label for="grid-view-mode">Show on map</label>
-            <select id="grid-view-mode"><option value="month">Methane per 0.1° cell</option><option value="peak">Peak month by province</option></select>
+            <select id="grid-view-mode"><option value="month">Methane in each 10 km cell</option><option value="peak">Peak month by province</option></select>
           </div>
           <button class="tool" id="grid-clear" hidden>Clear selection</button>
           <p class="sub" id="grid-mode-note"></p>
@@ -106,7 +106,7 @@
         </div>
         <div class="card">
           <h2>Cell detail</h2>
-          <p class="sub" id="grid-info">Hover or tap a cell to read its value.</p>
+          <p class="sub" id="grid-info">Point at a cell to see its value.</p>
           <p class="sub" id="grid-selected" hidden></p>
         </div>
       </div>
@@ -130,7 +130,7 @@
           <p class="sub" id="when-sub"></p>
           <div class="region-key" id="when-key"></div>
           <div id="when-chart"></div>
-          <p class="sub region-note">Regions: the four used in OAE rice statistics (North 17, Northeast 20, Central 26, South 14 provinces). Reference period: 2022–24 rice area, May 2022 – May 2023 planting dates.</p>
+          <p class="sub region-note">Regions follow OAE rice statistics: North (17 provinces), Northeast (20), Central (26) and South (14).</p>
         </div>
       </aside>
     </div>
@@ -138,11 +138,11 @@
 
   <section class="notes">
     <h2>About these estimates</h2>
-    <p>Every number starts from official sources: rice area from the Office of Agricultural Economics, and the emission factors and irrigated and flood-prone shares from Thailand’s first Biennial Transparency Report (BTR1). Satellites are used only to place the methane within each province (Open-SEA-Rice-10 rice area, Sentinel-2 dry-season water) and to spread it over the year (MODIS planting dates; each crop emits evenly over 120 days).</p>
+    <p>Every number starts from official data. Rice area comes from the Office of Agricultural Economics (OAE). The emission factors, and the shares of irrigated and flood-prone rice, come from Thailand’s first Biennial Transparency Report (BTR1). Satellites are used only to decide where the methane goes within each province (the Open-SEA-Rice-10 rice map and Sentinel-2 dry-season water) and when in the year it is released (MODIS planting dates, with each crop emitting evenly over 120 days). 1 Gg = 1,000 tonnes.</p>
     <ul>
-      <li><b>Province map</b>: the same factors and shares are applied to each year’s official rice area, so year-to-year changes come from rice area only, not from changes in farming practice. For 2000–2022 the national totals stay within 2% of BTR1’s official figures. Bueng Kan is grouped with Nong Khai through 2011 and shown separately from 2012. The ranking uses a one-year window in 2012 and a two-year window in 2013 to keep that change in reporting areas out of the averages. Before 1994, Amnat Charoen, Nong Bua Lamphu and Sa Kaeo are shown as part of the provinces they were split from.</li>
-      <li><b>Seasonal grid</b>: one reference period, not a single calendar year. Rice area is the 2022–24 average and planting dates come from May 2022 to May 2023. Values are tonnes of CH₄ in each 0.1° cell in that month. The cells give spatial detail, but the monthly timing is applied by province, so neighbouring cells in one province rise and fall together. The grid has 4,379 cells: 3,840 with main-season rice and 540 with dry-season rice only.</li>
-      <li>Each map keeps one colour scale for all frames, so a change in colour is a change in estimated emissions. The scale is square-root; values above the top of the scale take the top colour.</li>
+      <li><b>Annual map</b>: each year uses that year’s official rice area with the same emission factors and shares, so changes between years come from rice area, not from changes in how rice is farmed. From 2000 to 2022 our national total stays within 2% of the official BTR1 figure. Bueng Kan is counted with Nong Khai up to 2011 and on its own from 2012; to keep that change out of the averages, the ranking uses one year in 2012 and two years in 2013. Before 1994, Amnat Charoen, Nong Bua Lamphu and Sa Kaeo are counted with the provinces they were split from.</li>
+      <li><b>Monthly map</b>: one typical year rather than a calendar year. Rice area is the 2022–24 average and planting dates run from May 2022 to May 2023. Each value is the tonnes of CH₄ in one 10 km (0.1°) cell. The cells show where the methane comes from, but timing is set for each province, so all cells in a province rise and fall together. 4,379 cells have rice methane: 3,839 with main-season rice and 540 with dry-season rice only.</li>
+      <li>Each map keeps one colour scale for every year or month, so a change in colour is a real change in the estimate. The scale is square-root, which lets small and large values show together; anything above the top of the scale gets the top colour.</li>
     </ul>
   </section>
 </main>
