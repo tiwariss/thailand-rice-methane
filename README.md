@@ -1,4 +1,4 @@
-# Thailand rice methane explorer
+# Where and when Thailand's rice methane is emitted, and what satellites add
 
 Where in Thailand does rice methane come from, and when is it emitted? Thailand's first Biennial Transparency Report (BTR1) gives a national total. This project estimates how emissions are distributed across provinces, within provinces on a 0.1° grid (about 10 km), and across the months of the year.
 
