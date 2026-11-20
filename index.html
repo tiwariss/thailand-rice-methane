@@ -92,7 +92,11 @@
             <div class="search-row"><input id="grid-search" list="province-options" placeholder="Type a province name" autocomplete="off"><button class="tool" type="submit">Go</button></div>
             <span id="grid-search-message" role="status"></span>
           </form>
+          <div><label for="grid-view-mode">Show on map</label>
+            <select id="grid-view-mode"><option value="month">Methane per 0.1° cell</option><option value="peak">Peak month by province</option></select>
+          </div>
           <button class="tool" id="grid-clear" hidden>Clear selection</button>
+          <p class="sub" id="grid-mode-note"></p>
         </div>
       </div>
       <div class="under-map top-right" id="grid-topright">
@@ -111,11 +115,7 @@
     <div class="provgrid">
       <div class="mapcol">
         <div class="maptools">
-          <div class="map-mode" id="grid-mode" role="group" aria-label="Map shows">
-            <button type="button" class="tool" data-mode="month" aria-pressed="true">Methane</button>
-            <button type="button" class="tool" data-mode="peak" aria-pressed="false">Peak month</button>
-          </div>
-          <span class="sub" id="grid-mode-note"></span>
+          <div class="detailbar"><label><input type="checkbox" id="grid-lines-toggle"> Grid lines between cells and stronger province borders</label></div>
         </div>
         <div class="mapwrap"><div id="map-grid" class="map" aria-label="Map of estimated methane allocation on 0.1 degree cells"></div></div>
         <p class="sub" id="grid-ref"></p>

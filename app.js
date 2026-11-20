@@ -95,7 +95,14 @@
       r.on('click', () => select(i));
       return r.outside ? r : r.addTo(map);
     });
-    L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#ffffff', weight: 0.4, fill: false, opacity: 0.35 } }).addTo(map);   // s218: fainter province lines
+    const provLines = L.geoJSON(P.geo, { pane: 'lines', interactive: false, style: { color: '#ffffff', weight: 0.4, fill: false, opacity: 0.35 } }).addTo(map);   // s218: fainter province lines
+    // s229: checkbox above the map: thin lines between the 0.1° cells and stronger province borders (off by default)
+    let gridLines = false;
+    function lineStyle() {
+      const st = gridLines ? { stroke: true, color: '#ffffff', weight: 0.4, opacity: 0.45 } : { stroke: false };
+      layers.forEach((r) => r.setStyle(st)); cut.eachLayer((r) => r.setStyle(st));
+      provLines.setStyle(gridLines ? { color: '#ffffff', weight: 1.6, opacity: 0.95 } : { color: '#ffffff', weight: 0.4, opacity: 0.35 });
+    }
     // s220: a click selects the whole province (outline on the map + its monthly chart); hover still reads one cell
     let hl = null;
     const selectedInfo = document.getElementById('grid-selected');
@@ -124,6 +131,7 @@
         if (!g) return;   // no piece = a sliver too small to keep (same rule as the annual 10 km detail)
         const shp = L.polygon(toLL(g), { renderer, stroke: false, fillOpacity: 1, fillColor: cellColour(i) });
         shp.cellIndex = i;
+        if (gridLines) shp.setStyle({ stroke: true, color: '#ffffff', weight: 0.4, opacity: 0.45 });
         shp.bindTooltip(() => tipText(i), { sticky: true, className: 'tip', direction: 'top', offset: [0, -6] });
         shp.on('mouseover', () => { hover = i; info(i); });
         shp.on('mouseout', () => { hover = null; info(null); });
@@ -221,7 +229,7 @@
     };
     function setMode(m) {
       mode = m;
-      document.querySelectorAll('#grid-mode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+      const sel = document.getElementById('grid-view-mode'); if (sel && sel.value !== m) sel.value = m;
       if (m === 'peak') { peakLayer.addTo(map); peakLegend.addTo(map); } else { map.removeLayer(peakLayer); peakLegend.remove(); }
       recolour(); drawLegend(); info(hover);
       document.getElementById('grid-mode-note').textContent = m === 'peak'
@@ -229,7 +237,8 @@
         : 'Tonnes of CH₄ in each 0.1° cell in the selected month, or over the whole year (last step of the slider).';
       if (APP.writeHash) APP.writeHash();
     }
-    document.querySelectorAll('#grid-mode button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+    document.getElementById('grid-view-mode').addEventListener('change', (e) => setMode(e.target.value));
+    document.getElementById('grid-lines-toggle').addEventListener('change', (e) => { gridLines = e.target.checked; lineStyle(); });
     // s226: ONE interactive "when" chart (replaces the Thailand total, region and province charts, which repeated the same months).
     // No province selected: Thailand stacked by region; a region in the key isolates it (click again for all). Province selected:
     // that province's months in its region colour, with a button back to Thailand. Current month outlined; a bar click sets the month.
@@ -301,7 +310,7 @@
     APP.regions = RM;
     APP.isolateRegion = (r) => { rsel = r; whenChart(); };
     window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) whenChart(); });
-    APP.gridProv = { series: PM, peak: peakOf, select: selectProv, selected: () => gsel, setMode, mode: () => mode };
+    APP.gridProv = { series: PM, peak: peakOf, select: selectProv, selected: () => gsel, setMode, mode: () => mode, gridLines: () => gridLines };
     APP.whenChart = whenChart;
     function setMonth(m) {
       const wasWhole = whole;
