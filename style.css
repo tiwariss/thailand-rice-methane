@@ -438,3 +438,18 @@ main { position: relative; }
 .cmp-chip { min-width: 0; flex: 0 1 auto; }
 .cmp-chip .cmp-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .cmp-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.mobile-layout-tip {
+  display: flex;
+  align-items: center;
+  gap: .65em;
+  margin: .4em 0;
+  padding: .3em .45em .3em .65em;
+  border: 1px solid #aebdcd;
+  background: #edf3f9;
+  color: #162d48;
+  line-height: 1.3;
+}
+.mobile-layout-tip[hidden] { display: none; }
+.mobile-layout-tip p { flex: 1; margin: 0; }
+.mobile-layout-tip .tool { flex: none; font-size: .9em; padding: .5em; min-height: 2.5em; }

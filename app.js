@@ -7,6 +7,21 @@
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fmt = (v, d) => (v === null || v === undefined || Number.isNaN(v) ? 'No data' : d3.format(',.' + d + 'f')(v));
 
+  const mobileTip = document.getElementById('mobile-layout-tip');
+  if (window.matchMedia('(any-pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 1024) {
+    function sizeMobileTip() {
+      const fitScale = document.documentElement.clientWidth / screen.width;
+      mobileTip.style.fontSize = `${14 * Math.max(1, fitScale)}px`;
+    }
+    sizeMobileTip();
+    mobileTip.hidden = false;
+    window.addEventListener('resize', sizeMobileTip);
+    mobileTip.querySelector('button').addEventListener('click', () => {
+      mobileTip.hidden = true;
+      window.removeEventListener('resize', sizeMobileTip);
+    });
+  }
+
   // fixed colour scale per view: sqrt, 0 at the low end, clamped at vmax
   function makeScale(vmax) {
     const s = d3.scaleSqrt().domain([0, vmax]).range([0, 1]).clamp(true);
