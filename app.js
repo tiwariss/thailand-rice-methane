@@ -220,7 +220,8 @@
     // s224: drawn on the same canvas as the cells (added last, so on top). A separate canvas pane swallowed clicks once empty.
     const cut = L.layerGroup().addTo(map);
     function fade() {
-      layers.forEach((r) => r.setStyle({ fillOpacity: gsel ? 0.35 : 1 }));
+      const regOf = (i) => (cellProv[i] ? (window.DATA_REGIONS || {})[cellProv[i].p] : null);
+      layers.forEach((r, i) => r.setStyle({ fillOpacity: gsel ? 0.35 : rsel ? (regOf(i) === rsel ? 1 : 0.35) : 1 }));   // s245: region fade
       cut.clearLayers();
       if (!gsel) return;
       const CC = (window.DATA_CLIPPED_CELLS || {})[gsel] || {};
@@ -257,6 +258,7 @@
       if (!PM[p]) return;
       if (gsel === p) { clearProv(); return; }
       gsel = p;
+      if (rsel) { rsel = null; if (regHL) { map.removeLayer(regHL); regHL = null; } }   // s245: a province replaces a region
       const gs = document.getElementById('grid-search'); if (gs) gs.value = p;
       if (gridClear) gridClear.hidden = false;
       if (hl) map.removeLayer(hl);
@@ -378,7 +380,7 @@
           b.setAttribute('aria-pressed', String(rsel === r)); b.dataset.region = r; if (rsel && rsel !== r) b.classList.add('dim');
           const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = RCOL[r];
           b.append(sw, document.createTextNode(`${r} ${fmt(v, 1)} Gg (${fmt(v / (whole ? d3.sum(all) : all[month - 1]) * 100, 0)}%)`));
-          b.addEventListener('click', () => { rsel = rsel === r ? null : r; whenChart(); });
+          b.addEventListener('click', () => { rsel = rsel === r ? null : r; whenChart(); showRegion(); });
           key.append(b);
         });
       }
@@ -407,7 +409,22 @@
       });
     }
     APP.regions = RM;
-    APP.isolateRegion = (r) => { rsel = r; whenChart(); };
+    // s245: choosing a region in the chart key outlines the whole region on the map (one merged outline), fades the cells
+    // outside it and zooms to it; choosing it again clears it and returns to Thailand. A province selection replaces it.
+    let regHL = null;
+    function showRegion() {
+      if (regHL) { map.removeLayer(regHL); regHL = null; }
+      fade();
+      const g = rsel && (window.DATA_REGION_OUTLINES || {})[rsel];
+      if (!g) { if (!gsel) flyTo(L.latLngBounds(TH_BOUNDS), {}); return; }
+      const f = { type: 'Feature', properties: {}, geometry: g };
+      regHL = L.layerGroup([L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: '#ffffff', weight: 5, fill: false, opacity: 0.95 } }),
+        L.geoJSON(f, { pane: 'hl', interactive: false, style: { color: ink, weight: 2.2, fill: false } })]).addTo(map);
+      flyTo(regHL.getLayers()[0].getBounds(), { padding: [20, 20] });
+      if (APP.writeHash) APP.writeHash();
+    }
+    APP.isolateRegion = (r) => { rsel = r; whenChart(); showRegion(); };
+    APP.region = () => rsel;
     window.addEventListener('resize', () => { if (!document.getElementById('view-grid').hidden) whenChart(); });
     APP.gridProv = { series: PM, peak: peakOf, select: selectProv, selected: () => gsel, setMode, mode: () => mode, gridLines: () => gridLines };
     APP.whenChart = whenChart;
